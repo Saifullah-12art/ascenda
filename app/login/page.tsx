@@ -5,41 +5,36 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
-export default function SignUpPage() {
+export default function SignInPage() {
   const router = useRouter();
   // Reuse the shared browser client (cookie-based session, managed by middleware).
   const supabase = createClient();
 
-  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  async function handleSignUp(e: React.FormEvent) {
+  async function handleSignIn(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setLoading(true);
 
-    // Create the account. The full name is stored in user metadata via
-    // `options.data`, so it travels with the user record in Supabase Auth.
-    const { error } = await supabase.auth.signUp({
+    // Authenticate against Supabase Auth with email + password.
+    const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
-      options: {
-        data: { full_name: fullName },
-      },
     });
 
     setLoading(false);
 
-    // Surface auth errors (e.g. "User already registered") to the user.
+    // Surface auth errors (e.g. "Invalid login credentials") to the user.
     if (error) {
       setError(error.message);
       return;
     }
 
-    // Account created — send them to their daily routine.
+    // Signed in — send them to their daily routine.
     router.push("/today");
   }
 
@@ -52,22 +47,7 @@ export default function SignUpPage() {
           <p className="mt-1 text-[11px] text-gray-400">Rise every day.</p>
         </div>
 
-        <form onSubmit={handleSignUp} className="flex flex-col gap-3">
-          {/* Full name */}
-          <div className="flex flex-col gap-1">
-            <label htmlFor="fullName" className="text-[11px] text-gray-500">
-              Full name
-            </label>
-            <input
-              id="fullName"
-              type="text"
-              required
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              className="rounded-md border border-gray-200 bg-white px-3 py-2 text-[13px] text-gray-800 outline-none focus:border-[#534AB7]"
-            />
-          </div>
-
+        <form onSubmit={handleSignIn} className="flex flex-col gap-3">
           {/* Email */}
           <div className="flex flex-col gap-1">
             <label htmlFor="email" className="text-[11px] text-gray-500">
@@ -107,23 +87,17 @@ export default function SignUpPage() {
             disabled={loading}
             className="mt-1 rounded-md bg-[#534AB7] px-3 py-2 text-[13px] font-medium text-white disabled:opacity-60"
           >
-            {loading ? "Creating account…" : "Create account"}
+            {loading ? "Signing in…" : "Sign in"}
           </button>
 
           {/* Secondary action */}
           <Link
-            href="/login"
+            href="/"
             className="rounded-md border border-[#534AB7] px-3 py-2 text-center text-[13px] font-medium text-[#534AB7]"
           >
-            Sign in instead
+            Create account instead
           </Link>
         </form>
-
-        {/* Terms */}
-        <p className="mt-6 text-center text-[10px] text-gray-400">
-          By creating an account you agree to our Terms of Service and Privacy
-          Policy.
-        </p>
       </div>
     </main>
   );
