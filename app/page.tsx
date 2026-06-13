@@ -39,8 +39,8 @@ export default function SignUpPage() {
       return;
     }
 
-    // Account created — send them to their daily routine.
-    router.push("/today");
+    // Account created — send new users through onboarding first.
+    router.push("/onboarding");
   }
 
   return (
