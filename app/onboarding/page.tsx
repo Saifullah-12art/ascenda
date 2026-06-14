@@ -55,6 +55,7 @@ export default function OnboardingPage() {
 
   const [checking, setChecking] = useState(true); // gating the auth/already-onboarded check
   const [saving, setSaving] = useState(false);
+  const [building, setBuilding] = useState(false); // routine generation in flight
   const [error, setError] = useState<string | null>(null);
 
   // On mount: require a logged-in user, and skip onboarding if it's already done.
@@ -133,13 +134,39 @@ export default function OnboardingPage() {
       .update({ onboarding_answers: answers })
       .eq("id", user.id);
 
+    setSaving(false);
+
     if (updateError) {
       setError(updateError.message);
-      setSaving(false);
       return;
     }
 
-    router.replace("/today");
+    // Answers are saved — now generate the routine from them.
+    await buildRoutine();
+  }
+
+  // Calls the server route that turns the saved answers into a daily routine.
+  // Kept separate so the user can retry generation without re-saving answers.
+  async function buildRoutine() {
+    setBuilding(true);
+    setError(null);
+
+    try {
+      const res = await fetch("/api/generate-routine", { method: "POST" });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setError(body.error ?? "Couldn't build your routine. Please try again.");
+        setBuilding(false);
+        return;
+      }
+
+      // Success — head to the day view.
+      router.replace("/today");
+    } catch {
+      setError("Couldn't build your routine. Please try again.");
+      setBuilding(false);
+    }
   }
 
   // Hold the layout still while we verify auth / onboarding status.
@@ -221,10 +248,16 @@ export default function OnboardingPage() {
           <button
             type="button"
             onClick={handleContinue}
-            disabled={!selected || saving}
+            disabled={!selected || saving || building}
             className="rounded-xl bg-[#534AB7] px-4 py-3 text-[13px] font-medium text-white disabled:opacity-50"
           >
-            {saving ? "Saving…" : isLastStep ? "Finish" : "Continue"}
+            {building
+              ? "Building your routine…"
+              : saving
+                ? "Saving…"
+                : isLastStep
+                  ? "Finish"
+                  : "Continue"}
           </button>
 
           {/* Optional back navigation */}
@@ -232,7 +265,7 @@ export default function OnboardingPage() {
             <button
               type="button"
               onClick={goBack}
-              disabled={saving}
+              disabled={saving || building}
               className="text-[11px] text-gray-400 disabled:opacity-50"
             >
               Back
