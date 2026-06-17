@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import BottomNav from "@/components/BottomNav";
 
 // A task row as stored in the `tasks` table.
 type Task = {
@@ -152,7 +153,8 @@ export default function TodayPage() {
   }
 
   return (
-    <main className="flex min-h-screen justify-center bg-white px-6 py-10">
+    <>
+    <main className="flex min-h-screen justify-center bg-white px-6 pt-10 pb-28">
       <div className="w-full max-w-[380px]">
         {/* Header */}
         <p className="text-[11px] text-gray-400">{formatHeaderDate()}</p>
@@ -249,5 +251,7 @@ export default function TodayPage() {
         )}
       </div>
     </main>
+    <BottomNav />
+    </>
   );
 }

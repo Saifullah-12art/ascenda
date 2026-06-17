@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import BottomNav from "@/components/BottomNav";
 
 type Profile = {
   full_name: string | null;
@@ -154,7 +155,8 @@ export default function ProfilePage() {
   }
 
   return (
-    <main className="flex min-h-screen justify-center bg-white px-6 py-10">
+    <>
+    <main className="flex min-h-screen justify-center bg-white px-6 pt-10 pb-28">
       <div className="flex w-full max-w-[380px] flex-col">
         {/* Identity */}
         <div className="flex flex-col items-center">
@@ -231,5 +233,7 @@ export default function ProfilePage() {
         </button>
       </div>
     </main>
+    <BottomNav />
+    </>
   );
 }

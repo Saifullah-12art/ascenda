@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import BottomNav from "@/components/BottomNav";
 
 // One ranked row as returned by /api/leaderboard.
 type LeaderboardRow = {
@@ -53,7 +54,8 @@ export default function LeaderboardPage() {
   }
 
   return (
-    <main className="flex min-h-screen justify-center bg-white px-6 py-10">
+    <>
+    <main className="flex min-h-screen justify-center bg-white px-6 pt-10 pb-28">
       <div className="w-full max-w-[400px]">
         {/* Header */}
         <p className="text-[11px] uppercase tracking-wide text-gray-400">
@@ -123,5 +125,7 @@ export default function LeaderboardPage() {
         </div>
       </div>
     </main>
+    <BottomNav />
+    </>
   );
 }
