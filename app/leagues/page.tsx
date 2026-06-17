@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import BottomNav from "@/components/BottomNav";
 
@@ -210,9 +211,10 @@ export default function LeaguesPage() {
             ) : (
               <div className="mt-4 flex flex-col gap-3">
                 {leagues.map((league) => (
-                  <div
+                  <Link
                     key={league.id}
-                    className="rounded-xl border-[0.5px] border-gray-200 bg-white px-4 py-3"
+                    href={`/leagues/${league.id}`}
+                    className="block rounded-xl border-[0.5px] border-gray-200 bg-white px-4 py-3"
                   >
                     {/* Name + member count */}
                     <p className="text-[14px] font-medium text-gray-900">
@@ -230,13 +232,17 @@ export default function LeaguesPage() {
                       </span>
                       <button
                         type="button"
-                        onClick={() => handleCopy(league)}
+                        onClick={(e) => {
+                          // Don't let a copy tap navigate into the league.
+                          e.preventDefault();
+                          handleCopy(league);
+                        }}
                         className="text-[11px] font-medium text-[#534AB7]"
                       >
                         {copiedId === league.id ? "Copied" : "Copy"}
                       </button>
                     </div>
-                  </div>
+                  </Link>
                 ))}
               </div>
             )}
