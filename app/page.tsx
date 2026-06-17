@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { getPostAuthRoute } from "@/lib/auth";
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -15,6 +16,27 @@ export default function SignUpPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [checking, setChecking] = useState(true); // gating the "already logged in" check
+
+  // On mount: if already signed in, skip the form and route them onward.
+  useEffect(() => {
+    async function init() {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (user) {
+        router.replace(await getPostAuthRoute(supabase, user));
+        return;
+      }
+
+      setChecking(false);
+    }
+
+    init();
+    // supabase/router are stable; run once on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function handleSignUp(e: React.FormEvent) {
     e.preventDefault();
@@ -41,6 +63,11 @@ export default function SignUpPage() {
 
     // Account created — send new users through onboarding first.
     router.push("/onboarding");
+  }
+
+  // Hold the layout still while we check for an existing session.
+  if (checking) {
+    return <main className="min-h-screen bg-[#EEEDFE]" />;
   }
 
   return (

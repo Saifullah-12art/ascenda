@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { getPostAuthRoute } from "@/lib/auth";
 
 export default function SignInPage() {
   const router = useRouter();
@@ -14,6 +15,27 @@ export default function SignInPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [checking, setChecking] = useState(true); // gating the "already logged in" check
+
+  // On mount: if already signed in, skip the form and route them onward.
+  useEffect(() => {
+    async function init() {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (user) {
+        router.replace(await getPostAuthRoute(supabase, user));
+        return;
+      }
+
+      setChecking(false);
+    }
+
+    init();
+    // supabase/router are stable; run once on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function handleSignIn(e: React.FormEvent) {
     e.preventDefault();
@@ -21,21 +43,25 @@ export default function SignInPage() {
     setLoading(true);
 
     // Authenticate against Supabase Auth with email + password.
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
-    setLoading(false);
-
     // Surface auth errors (e.g. "Invalid login credentials") to the user.
-    if (error) {
-      setError(error.message);
+    if (error || !data.user) {
+      setError(error?.message ?? "Something went wrong. Please try again.");
+      setLoading(false);
       return;
     }
 
-    // Signed in — send them to their daily routine.
-    router.push("/today");
+    // Signed in — route based on whether they've onboarded yet.
+    router.push(await getPostAuthRoute(supabase, data.user));
+  }
+
+  // Hold the layout still while we check for an existing session.
+  if (checking) {
+    return <main className="min-h-screen bg-[#EEEDFE]" />;
   }
 
   return (
