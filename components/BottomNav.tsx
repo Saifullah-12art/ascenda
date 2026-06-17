@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 const TABS = [
   { href: "/today", label: "Today", match: "/today" },
   { href: "/feed", label: "Feed", match: "/feed" },
+  { href: "/leagues", label: "Leagues", match: "/leagues" },
   { href: "/leaderboard", label: "Leaderboard", match: "/leaderboard" },
   { href: "/profile", label: "Profile", match: "/profile" },
 ] as const;
@@ -40,6 +41,16 @@ function TabIcon({ href }: { href: string }) {
       <svg {...common}>
         <rect x="3" y="4" width="18" height="6" rx="1.5" />
         <rect x="3" y="14" width="18" height="6" rx="1.5" />
+      </svg>
+    );
+  }
+  if (href === "/leagues") {
+    // People — the leagues you belong to.
+    return (
+      <svg {...common}>
+        <circle cx="9" cy="8" r="3.2" />
+        <path d="M3 20c0-3.2 2.7-5 6-5s6 1.8 6 5" />
+        <path d="M16 5.2a3.2 3.2 0 0 1 0 5.6M17.5 14.6c2.1.6 3.5 2.2 3.5 5.4" />
       </svg>
     );
   }
