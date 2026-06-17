@@ -162,7 +162,7 @@ export default function LeaguesPage() {
                 type="button"
                 onClick={handleCreate}
                 disabled={!name.trim() || creating}
-                className="shrink-0 rounded-xl bg-[#534AB7] px-4 py-3 text-[13px] font-medium text-white disabled:opacity-50"
+                className="shrink-0 rounded-xl bg-[#534AB7] px-4 py-3 text-[13px] font-medium text-white transition enabled:hover:opacity-90 enabled:active:scale-[0.98] disabled:opacity-50"
               >
                 {creating ? "…" : "Create"}
               </button>
@@ -188,7 +188,7 @@ export default function LeaguesPage() {
                 type="button"
                 onClick={handleJoin}
                 disabled={!code.trim() || joining}
-                className="shrink-0 rounded-xl bg-[#534AB7] px-4 py-3 text-[13px] font-medium text-white disabled:opacity-50"
+                className="shrink-0 rounded-xl bg-[#534AB7] px-4 py-3 text-[13px] font-medium text-white transition enabled:hover:opacity-90 enabled:active:scale-[0.98] disabled:opacity-50"
               >
                 {joining ? "…" : "Join"}
               </button>
@@ -215,7 +215,7 @@ export default function LeaguesPage() {
                   <Link
                     key={league.id}
                     href={`/leagues/${league.id}`}
-                    className="block rounded-xl border-[0.5px] border-gray-200 bg-white px-4 py-3"
+                    className="block rounded-xl border-[0.5px] border-gray-200 bg-white px-4 py-3 transition hover:border-gray-300 active:scale-[0.98]"
                   >
                     {/* Name + member count */}
                     <p className="text-[14px] font-medium text-gray-900">

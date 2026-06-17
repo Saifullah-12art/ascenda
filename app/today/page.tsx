@@ -161,7 +161,11 @@ export default function TodayPage() {
         <p className="text-[11px] text-gray-400">{formatHeaderDate()}</p>
         <div className="mt-1 flex items-center justify-between">
           <h1 className="text-[17px] font-medium text-gray-900">Your routine</h1>
-          <span className="rounded-full bg-[#534AB7] px-2.5 py-1 text-[11px] font-medium text-white">
+          {/* `key={percent}` remounts the badge on change so it pops subtly. */}
+          <span
+            key={percent}
+            className="animate-pop rounded-full bg-[#534AB7] px-2.5 py-1 text-[11px] font-medium text-white"
+          >
             {percent}% done
           </span>
         </div>
@@ -169,7 +173,7 @@ export default function TodayPage() {
         {/* Progress bar */}
         <div className="mt-3 h-1 w-full rounded-full bg-[#EEEDFE]">
           <div
-            className="h-1 rounded-full bg-[#534AB7] transition-all"
+            className="h-1 rounded-full bg-[#534AB7] transition-all duration-300 ease-out"
             style={{ width: `${percent}%` }}
           />
         </div>
@@ -201,11 +205,17 @@ export default function TodayPage() {
                           key={task.id}
                           type="button"
                           onClick={() => toggle(task.id)}
-                          className="flex items-center gap-3 py-2 text-left"
+                          className="flex items-center gap-3 py-2 text-left transition active:scale-[0.99]"
                         >
-                          {/* Circular checkbox */}
-                          {isDone ? (
-                            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#1D9E75]">
+                          {/* Circular checkbox — empty ring with a green fill +
+                              check that scale/fade in over the top when done. */}
+                          <span className="relative h-5 w-5 shrink-0">
+                            <span className="absolute inset-0 rounded-full border-[1.5px] border-gray-300" />
+                            <span
+                              className={`absolute inset-0 flex items-center justify-center rounded-full bg-[#1D9E75] transition-all duration-200 ease-out ${
+                                isDone ? "scale-100 opacity-100" : "scale-50 opacity-0"
+                              }`}
+                            >
                               <svg
                                 width="12"
                                 height="12"
@@ -220,19 +230,23 @@ export default function TodayPage() {
                                 <polyline points="20 6 9 17 4 12" />
                               </svg>
                             </span>
-                          ) : (
-                            <span className="h-5 w-5 shrink-0 rounded-full border-[1.5px] border-gray-300" />
-                          )}
+                          </span>
 
-                          {/* Task name — struck through + muted when done */}
+                          {/* Task name — color fades and the strikethrough line
+                              draws in (scale-x) when done. */}
                           <span
-                            className={`flex-1 text-[13px] ${
-                              isDone
-                                ? "text-gray-400 line-through"
-                                : "text-gray-800"
+                            className={`flex-1 text-[13px] transition-colors duration-200 ${
+                              isDone ? "text-gray-400" : "text-gray-800"
                             }`}
                           >
-                            {task.name}
+                            <span className="relative inline-block">
+                              {task.name}
+                              <span
+                                className={`pointer-events-none absolute left-0 top-1/2 h-px w-full origin-left bg-current transition-transform duration-200 ease-out ${
+                                  isDone ? "scale-x-100" : "scale-x-0"
+                                }`}
+                              />
+                            </span>
                           </span>
 
                           {/* Time on the right */}

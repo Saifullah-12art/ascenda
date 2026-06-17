@@ -260,7 +260,7 @@ export default function ComposePage() {
           type="button"
           onClick={handleSubmit}
           disabled={!canSubmit}
-          className="mt-8 w-full rounded-xl bg-[#534AB7] px-4 py-3 text-[13px] font-medium text-white disabled:opacity-50"
+          className="mt-8 w-full rounded-xl bg-[#534AB7] px-4 py-3 text-[13px] font-medium text-white transition enabled:hover:opacity-90 enabled:active:scale-[0.98] disabled:opacity-50"
         >
           {submitting ? "Posting…" : "Post"}
         </button>

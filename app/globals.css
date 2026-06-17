@@ -24,4 +24,21 @@ body {
   .text-balance {
     text-wrap: balance;
   }
+
+  /* Subtle one-shot "pop" for values that change (e.g. the % badge). */
+  .animate-pop {
+    animation: pop 200ms ease-out;
+  }
+}
+
+@keyframes pop {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.06);
+  }
+  100% {
+    transform: scale(1);
+  }
 }

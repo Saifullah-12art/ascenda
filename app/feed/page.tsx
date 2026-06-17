@@ -89,7 +89,7 @@ export default function FeedPage() {
           {/* Share CTA */}
           <Link
             href="/compose"
-            className="mt-4 block w-full rounded-xl bg-[#534AB7] px-4 py-3 text-center text-[13px] font-medium text-white"
+            className="mt-4 block w-full rounded-xl bg-[#534AB7] px-4 py-3 text-center text-[13px] font-medium text-white transition hover:opacity-90 active:scale-[0.98]"
           >
             Share today&apos;s win
           </Link>

@@ -212,7 +212,7 @@ export default function OnboardingPage() {
                 key={option}
                 type="button"
                 onClick={() => select(option)}
-                className={`flex items-center justify-between rounded-xl px-4 py-3 text-left text-[13px] transition-colors ${
+                className={`flex items-center justify-between rounded-xl px-4 py-3 text-left text-[13px] transition active:scale-[0.98] ${
                   isSelected
                     ? "border-[1.5px] border-[#534AB7] bg-[#EEEDFE] text-[#534AB7]"
                     : "border-[0.5px] border-gray-200 bg-white text-gray-800"
@@ -249,7 +249,7 @@ export default function OnboardingPage() {
             type="button"
             onClick={handleContinue}
             disabled={!selected || saving || building}
-            className="rounded-xl bg-[#534AB7] px-4 py-3 text-[13px] font-medium text-white disabled:opacity-50"
+            className="rounded-xl bg-[#534AB7] px-4 py-3 text-[13px] font-medium text-white transition enabled:hover:opacity-90 enabled:active:scale-[0.98] disabled:opacity-50"
           >
             {building
               ? "Building your routine…"
