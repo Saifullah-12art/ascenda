@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import BottomNav from "@/components/BottomNav";
+import Loading from "@/components/Loading";
 
 // One ranked row as returned by /api/leaderboard.
 type LeaderboardRow = {
@@ -48,9 +49,9 @@ export default function LeaderboardPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Hold the layout still while loading.
+  // Show a loading state while data is fetching.
   if (loading) {
-    return <main className="min-h-screen bg-white" />;
+    return <Loading />;
   }
 
   return (

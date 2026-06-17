@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import BottomNav from "@/components/BottomNav";
+import Loading from "@/components/Loading";
 
 // The league we're viewing.
 type League = {
@@ -135,9 +136,9 @@ export default function LeagueDetailPage() {
     }
   }
 
-  // Hold the layout still while loading.
+  // Show a loading state while data is fetching.
   if (loading || !league) {
-    return <main className="min-h-screen bg-white" />;
+    return <Loading />;
   }
 
   return (

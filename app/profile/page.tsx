@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import BottomNav from "@/components/BottomNav";
+import Loading from "@/components/Loading";
 
 type Profile = {
   full_name: string | null;
@@ -134,9 +135,9 @@ export default function ProfilePage() {
     return streak;
   }
 
-  // Hold the layout still while loading.
+  // Show a loading state while data is fetching.
   if (loading) {
-    return <main className="min-h-screen bg-white" />;
+    return <Loading />;
   }
 
   const streak = computeStreak();

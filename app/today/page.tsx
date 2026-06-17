@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import BottomNav from "@/components/BottomNav";
+import Loading from "@/components/Loading";
 
 // A task row as stored in the `tasks` table.
 type Task = {
@@ -147,9 +148,9 @@ export default function TodayPage() {
     }
   }
 
-  // Hold the layout still while loading.
+  // Show a loading state while data is fetching.
   if (loading) {
-    return <main className="min-h-screen bg-white" />;
+    return <Loading />;
   }
 
   return (

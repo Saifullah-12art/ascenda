@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import BottomNav from "@/components/BottomNav";
+import Loading from "@/components/Loading";
 
 // A post row as stored in the `posts` table (the fields the feed renders).
 type Post = {
@@ -73,9 +74,9 @@ export default function FeedPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Hold the layout still while loading.
+  // Show a loading state while data is fetching.
   if (loading) {
-    return <main className="min-h-screen bg-white" />;
+    return <Loading />;
   }
 
   return (

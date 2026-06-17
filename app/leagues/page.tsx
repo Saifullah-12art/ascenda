@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import BottomNav from "@/components/BottomNav";
+import Loading from "@/components/Loading";
 
 // A league row plus the member count we compute alongside it.
 type League = {
@@ -133,9 +134,9 @@ export default function LeaguesPage() {
     }
   }
 
-  // Hold the layout still while loading.
+  // Show a loading state while data is fetching.
   if (loading) {
-    return <main className="min-h-screen bg-white" />;
+    return <Loading />;
   }
 
   return (
