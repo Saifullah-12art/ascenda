@@ -6,19 +6,21 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { getPostAuthRoute } from "@/lib/auth";
 
-export default function SignUpPage() {
+// The three steps shown under "How it works".
+const STEPS = [
+  "Answer a few questions, get an AI-built routine.",
+  "Check off your day and build your streak.",
+  "Post your wins and form leagues with friends to stay accountable.",
+];
+
+export default function LandingPage() {
   const router = useRouter();
   // Reuse the shared browser client (cookie-based session, managed by middleware).
   const supabase = createClient();
 
-  const [fullName, setFullName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(true); // gating the "already logged in" check
 
-  // On mount: if already signed in, skip the form and route them onward.
+  // On mount: if already signed in, skip the landing and route them onward.
   useEffect(() => {
     async function init() {
       const {
@@ -38,119 +40,63 @@ export default function SignUpPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function handleSignUp(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
-
-    // Create the account. The full name is stored in user metadata via
-    // `options.data`, so it travels with the user record in Supabase Auth.
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { full_name: fullName },
-      },
-    });
-
-    setLoading(false);
-
-    // Surface auth errors (e.g. "User already registered") to the user.
-    if (error) {
-      setError(error.message);
-      return;
-    }
-
-    // Account created — send new users through onboarding first.
-    router.push("/onboarding");
-  }
-
   // Hold the layout still while we check for an existing session.
   if (checking) {
-    return <main className="min-h-screen bg-[#EEEDFE]" />;
+    return <main className="min-h-screen bg-white" />;
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#EEEDFE] px-6">
-      <div className="w-full max-w-xs">
-        {/* Header */}
-        <div className="mb-8 text-center">
-          <h1 className="text-[20px] font-medium text-[#534AB7]">Ascenda</h1>
-          <p className="mt-1 text-[11px] text-gray-400">Rise every day.</p>
+    <main className="flex min-h-screen items-center justify-center bg-white px-6 py-12">
+      <div className="w-full max-w-sm">
+        {/* Hero */}
+        <div className="text-center">
+          <h1 className="text-[30px] font-semibold text-[#534AB7]">Ascenda</h1>
+          <p className="mt-1 text-[12px] text-gray-400">Rise every day.</p>
+          <p className="mt-5 text-[15px] leading-relaxed text-gray-700">
+            AI-built daily routines, kept on track by the friends you rise with.
+          </p>
         </div>
 
-        <form onSubmit={handleSignUp} className="flex flex-col gap-3">
-          {/* Full name */}
-          <div className="flex flex-col gap-1">
-            <label htmlFor="fullName" className="text-[11px] text-gray-500">
-              Full name
-            </label>
-            <input
-              id="fullName"
-              type="text"
-              required
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              className="rounded-md border border-gray-200 bg-white px-3 py-2 text-[13px] text-gray-800 outline-none focus:border-[#534AB7]"
-            />
-          </div>
+        {/* How it works */}
+        <div className="mt-10">
+          <h2 className="text-[12px] font-medium uppercase tracking-wide text-gray-400">
+            How it works
+          </h2>
+          <ol className="mt-4 flex flex-col gap-4">
+            {STEPS.map((step, i) => (
+              <li key={i} className="flex items-start gap-3">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#EEEDFE] text-[12px] font-medium text-[#534AB7]">
+                  {i + 1}
+                </span>
+                <span className="text-[13px] leading-relaxed text-gray-700">
+                  {step}
+                </span>
+              </li>
+            ))}
+          </ol>
+        </div>
 
-          {/* Email */}
-          <div className="flex flex-col gap-1">
-            <label htmlFor="email" className="text-[11px] text-gray-500">
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="rounded-md border border-gray-200 bg-white px-3 py-2 text-[13px] text-gray-800 outline-none focus:border-[#534AB7]"
-            />
-          </div>
+        {/* Differentiator */}
+        <p className="mt-8 rounded-md bg-[#E1F5EE] px-4 py-3 text-center text-[13px] font-medium leading-relaxed text-[#1D9E75]">
+          Not just a habit tracker — a place where friends keep each other
+          rising.
+        </p>
 
-          {/* Password */}
-          <div className="flex flex-col gap-1">
-            <label htmlFor="password" className="text-[11px] text-gray-500">
-              Password
-            </label>
-            <input
-              id="password"
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="rounded-md border border-gray-200 bg-white px-3 py-2 text-[13px] text-gray-800 outline-none focus:border-[#534AB7]"
-            />
-          </div>
-
-          {/* Error message */}
-          {error && <p className="text-[11px] text-red-500">{error}</p>}
-
-          {/* Primary action */}
-          <button
-            type="submit"
-            disabled={loading}
-            className="mt-1 rounded-md bg-[#534AB7] px-3 py-2 text-[13px] font-medium text-white transition enabled:hover:opacity-90 enabled:active:scale-[0.98] disabled:opacity-60"
+        {/* CTAs */}
+        <div className="mt-8 flex flex-col gap-3">
+          <Link
+            href="/signup"
+            className="rounded-md bg-[#534AB7] px-3 py-2.5 text-center text-[13px] font-medium text-white transition hover:opacity-90 active:scale-[0.98]"
           >
-            {loading ? "Creating account…" : "Create account"}
-          </button>
-
-          {/* Secondary action */}
+            Get started
+          </Link>
           <Link
             href="/login"
-            className="rounded-md border border-[#534AB7] px-3 py-2 text-center text-[13px] font-medium text-[#534AB7]"
+            className="text-center text-[13px] font-medium text-[#534AB7]"
           >
-            Sign in instead
+            Sign in
           </Link>
-        </form>
-
-        {/* Terms */}
-        <p className="mt-6 text-center text-[10px] text-gray-400">
-          By creating an account you agree to our Terms of Service and Privacy
-          Policy.
-        </p>
+        </div>
       </div>
     </main>
   );
