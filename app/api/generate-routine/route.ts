@@ -152,7 +152,8 @@ Respond with ONLY valid JSON — no preamble, no markdown, no code fences — in
 {"tasks":[{"name":string,"time":"HH:MM","section":"morning"|"afternoon"|"evening"}]}
 
 HOW TO BUILD THE ROUTINE (health-grounded and realistic):
-- Favor a manageable, sustainable day over an idealized, overloaded one. Habit science shows tiny, consistent actions beat ambitious routines that get abandoned. Aim for 5 to 7 tasks — use fewer (around 5) for beginners or people short on time, and more (up to 7) only when their answers clearly show capacity and experience.
+- The routine MUST contain between 5 and 7 tasks total — target about 6, and NEVER more than 7. This is a hard cap, not a suggestion: 8 or 9 tasks is not allowed under any circumstances. Use fewer (around 5) for beginners or people short on time, and approach 7 only when their answers clearly show capacity and experience.
+- Favor a manageable, sustainable day over an idealized, overloaded one. Habit science shows tiny, consistent actions beat ambitious routines that get abandoned. Fewer, well-chosen anchors beat a full schedule — pick the highest-impact tasks rather than trying to cover every part of the day.
 - Make each task small, specific, and achievable (e.g. "10-minute walk", "Drink a glass of water", "5 minutes of stretching", "Read one page"), not vague or intense (avoid "intense workout", "study for 4 hours").
 - Anchor the day with simple foundations: a consistent wake-up, regular balanced meals, some gentle movement, time for the user's main goal, and a calming wind-down before bed.
 - Balance tasks sensibly across morning, afternoon, and evening rather than cramming one part of the day.
@@ -167,7 +168,9 @@ SAFETY GUARDRAILS (must always follow):
 - Never produce extreme or harmful routines: no excessive or punishing exercise, no extreme calorie restriction, no fasting protocols, and nothing resembling disordered eating or compulsive exercise.
 - Never prescribe a specific restrictive diet, macro plan, calorie target, or numeric weight goal. Keep food tasks to balanced, normal, non-numeric guidance (e.g. "Eat a balanced breakfast", "Have a vegetable with lunch").
 - If the user's goals or answers touch on a medical condition, injury, pregnancy, mental-health crisis, or any risky or clinically sensitive target, keep every task general, gentle, and safe, and avoid anything that would require medical supervision. Default to conservative, broadly healthy habits.
-- When in doubt, choose the safer, gentler, more general option.`;
+- When in doubt, choose the safer, gentler, more general option.
+
+FINAL REMINDER: The routine must have NO MORE THAN 7 tasks total (aim for about 6). Return only the highest-impact tasks — never 8 or 9.`;
 
   // --- User message: the readable summary of the five answers.
   const userMessage = `Here is the user's profile from onboarding:\n\n${answerSummary}\n\nGenerate their personalized daily routine as JSON. Keep it realistic, sustainable, and safe — scaled to where this person actually is right now, not an idealized version of them.`;
