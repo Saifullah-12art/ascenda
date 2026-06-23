@@ -50,10 +50,15 @@ export default function LandingPage() {
       <div className="w-full max-w-sm">
         {/* Hero */}
         <div className="text-center">
-          <h1 className="text-[30px] font-semibold text-[#534AB7]">Ascenda</h1>
-          <p className="mt-1 text-[12px] text-gray-400">Rise every day.</p>
-          <p className="mt-5 text-[15px] leading-relaxed text-gray-700">
-            AI-built daily routines, kept on track by the friends you rise with.
+          <p className="text-[18px] font-semibold text-[#534AB7]">Ascenda</p>
+          <p className="mt-0.5 text-[12px] text-gray-400">Rise every day.</p>
+          <h1 className="mt-6 text-[28px] font-semibold leading-tight text-gray-900">
+            The feed that gets you off the feed.
+          </h1>
+          <p className="mt-4 text-[14px] leading-relaxed text-gray-500">
+            Ascenda builds you a daily routine, then gives you a feed where you
+            and your friends post the real things you actually did — so instead
+            of draining you like Instagram, it makes you want to go do yours.
           </p>
         </div>
 
