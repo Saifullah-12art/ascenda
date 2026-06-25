@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import BottomNav from "@/components/BottomNav";
 import Loading from "@/components/Loading";
+import TaskEditSheet, { type TaskFormValues } from "@/components/TaskEditSheet";
 
 // A task row as stored in the `tasks` table.
 type Task = {
@@ -42,6 +43,20 @@ function formatHeaderDate(): string {
   });
 }
 
+// Display a stored time as "HH:MM" (the column may come back as "HH:MM:SS").
+function displayTime(time: string): string {
+  return time.slice(0, 5);
+}
+
+// Order tasks within a section by time. Zero-padded "HH:MM" sorts as a string;
+// tasks without a time fall to the end, ties broken by their stored sort_order.
+function byTime(a: Task, b: Task): number {
+  const ta = a.time ?? "99:99";
+  const tb = b.time ?? "99:99";
+  if (ta !== tb) return ta < tb ? -1 : 1;
+  return a.sort_order - b.sort_order;
+}
+
 export default function TodayPage() {
   const router = useRouter();
   const supabase = createClient();
@@ -53,36 +68,42 @@ export default function TodayPage() {
   const [doneIds, setDoneIds] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
 
-  // On mount: require a user, then load tasks + today's completions.
-  useEffect(() => {
-    async function load() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+  // Edit/add sheet state. `editingTask` is null when adding a new task.
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
 
-      if (!user) {
-        router.replace("/");
-        return;
-      }
+  // Reload tasks + today's completions. Reused on mount and after every
+  // add/edit/delete so the list and the completion percentage stay in sync.
+  async function refresh() {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-      // Tasks in display order. RLS already scopes these to the user.
-      const { data: taskRows } = await supabase
-        .from("tasks")
-        .select("id, name, time, section, sort_order")
-        .order("sort_order", { ascending: true });
-
-      // Today's completions — we only need the task ids.
-      const { data: completionRows } = await supabase
-        .from("completions")
-        .select("task_id")
-        .eq("date", today);
-
-      setTasks((taskRows as Task[]) ?? []);
-      setDoneIds(new Set((completionRows ?? []).map((c) => c.task_id as string)));
-      setLoading(false);
+    if (!user) {
+      router.replace("/");
+      return;
     }
 
-    load();
+    // RLS already scopes these to the user. We re-sort by time per section at
+    // render, so the DB order here is just a stable fallback.
+    const { data: taskRows } = await supabase
+      .from("tasks")
+      .select("id, name, time, section, sort_order")
+      .order("sort_order", { ascending: true });
+
+    // Today's completions — we only need the task ids.
+    const { data: completionRows } = await supabase
+      .from("completions")
+      .select("task_id")
+      .eq("date", today);
+
+    setTasks((taskRows as Task[]) ?? []);
+    setDoneIds(new Set((completionRows ?? []).map((c) => c.task_id as string)));
+  }
+
+  // On mount: load data, then drop the loading state.
+  useEffect(() => {
+    refresh().finally(() => setLoading(false));
     // supabase/router are stable; run once on mount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -148,6 +169,87 @@ export default function TodayPage() {
     }
   }
 
+  // Open the sheet to add a new task (empty form).
+  function openAdd() {
+    setEditingTask(null);
+    setSheetOpen(true);
+  }
+
+  // Open the sheet pre-filled with an existing task.
+  function openEdit(task: Task) {
+    setEditingTask(task);
+    setSheetOpen(true);
+  }
+
+  // Save handler for both add and edit. On edit we update the row in place; on
+  // add we insert a new row owned by the user. RLS enforces ownership either way.
+  async function handleSave(values: TaskFormValues) {
+    setError(null);
+    const time = values.time || null; // empty input → no time
+
+    if (editingTask) {
+      // Edit: update name, time, and section of the existing task.
+      const { error: updError } = await supabase
+        .from("tasks")
+        .update({ name: values.name, time, section: values.section })
+        .eq("id", editingTask.id);
+      if (updError) {
+        setError("Couldn't save that task. Please try again.");
+        return;
+      }
+    } else {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        router.replace("/");
+        return;
+      }
+      // Add: place it after every existing task; render then sorts it by time.
+      const nextOrder =
+        tasks.reduce((max, t) => Math.max(max, t.sort_order), -1) + 1;
+      const { error: insError } = await supabase.from("tasks").insert({
+        user_id: user.id,
+        name: values.name,
+        time,
+        section: values.section,
+        sort_order: nextOrder,
+      });
+      if (insError) {
+        setError("Couldn't add that task. Please try again.");
+        return;
+      }
+    }
+
+    setSheetOpen(false);
+    await refresh();
+  }
+
+  // Delete the editing task. We remove its completions first so no orphaned
+  // rows are left behind to skew the streak/percentage math.
+  async function handleDelete() {
+    if (!editingTask) return;
+    setError(null);
+
+    const { error: compError } = await supabase
+      .from("completions")
+      .delete()
+      .eq("task_id", editingTask.id);
+
+    const { error: taskError } = await supabase
+      .from("tasks")
+      .delete()
+      .eq("id", editingTask.id);
+
+    if (compError || taskError) {
+      setError("Couldn't delete that task. Please try again.");
+      return;
+    }
+
+    setSheetOpen(false);
+    await refresh();
+  }
+
   // Show a loading state while data is fetching.
   if (loading) {
     return <Loading />;
@@ -189,7 +291,9 @@ export default function TodayPage() {
           // One block per section, in fixed order. Skip empty sections.
           <div className="mt-8 flex flex-col gap-7">
             {SECTIONS.map(({ key, label }) => {
-              const sectionTasks = tasks.filter((t) => t.section === key);
+              const sectionTasks = tasks
+                .filter((t) => t.section === key)
+                .sort(byTime);
               if (sectionTasks.length === 0) return null;
 
               return (
@@ -201,61 +305,88 @@ export default function TodayPage() {
                     {sectionTasks.map((task) => {
                       const isDone = doneIds.has(task.id);
                       return (
-                        <button
-                          key={task.id}
-                          type="button"
-                          onClick={() => toggle(task.id)}
-                          className="flex items-center gap-3 py-2 text-left transition active:scale-[0.99]"
-                        >
-                          {/* Circular checkbox — empty ring with a green fill +
-                              check that scale/fade in over the top when done. */}
-                          <span className="relative h-5 w-5 shrink-0">
-                            <span className="absolute inset-0 rounded-full border-[1.5px] border-gray-300" />
+                        <div key={task.id} className="flex items-center gap-1">
+                          {/* Tap-to-complete area — unchanged behavior, just no
+                              longer the whole row so it can't conflict with edit. */}
+                          <button
+                            type="button"
+                            onClick={() => toggle(task.id)}
+                            className="flex flex-1 items-center gap-3 py-2 text-left transition active:scale-[0.99]"
+                          >
+                            {/* Circular checkbox — empty ring with a green fill +
+                                check that scale/fade in over the top when done. */}
+                            <span className="relative h-5 w-5 shrink-0">
+                              <span className="absolute inset-0 rounded-full border-[1.5px] border-gray-300" />
+                              <span
+                                className={`absolute inset-0 flex items-center justify-center rounded-full bg-[#1D9E75] transition-all duration-200 ease-out ${
+                                  isDone ? "scale-100 opacity-100" : "scale-50 opacity-0"
+                                }`}
+                              >
+                                <svg
+                                  width="12"
+                                  height="12"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="white"
+                                  strokeWidth="3"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  aria-hidden="true"
+                                >
+                                  <polyline points="20 6 9 17 4 12" />
+                                </svg>
+                              </span>
+                            </span>
+
+                            {/* Task name — color fades and the strikethrough line
+                                draws in (scale-x) when done. */}
                             <span
-                              className={`absolute inset-0 flex items-center justify-center rounded-full bg-[#1D9E75] transition-all duration-200 ease-out ${
-                                isDone ? "scale-100 opacity-100" : "scale-50 opacity-0"
+                              className={`flex-1 text-[13px] transition-colors duration-200 ${
+                                isDone ? "text-gray-400" : "text-gray-800"
                               }`}
                             >
-                              <svg
-                                width="12"
-                                height="12"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="white"
-                                strokeWidth="3"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                aria-hidden="true"
-                              >
-                                <polyline points="20 6 9 17 4 12" />
-                              </svg>
+                              <span className="relative inline-block">
+                                {task.name}
+                                <span
+                                  className={`pointer-events-none absolute left-0 top-1/2 h-px w-full origin-left bg-current transition-transform duration-200 ease-out ${
+                                    isDone ? "scale-x-100" : "scale-x-0"
+                                  }`}
+                                />
+                              </span>
                             </span>
-                          </span>
 
-                          {/* Task name — color fades and the strikethrough line
-                              draws in (scale-x) when done. */}
-                          <span
-                            className={`flex-1 text-[13px] transition-colors duration-200 ${
-                              isDone ? "text-gray-400" : "text-gray-800"
-                            }`}
+                            {/* Time on the right */}
+                            {task.time && (
+                              <span className="text-[11px] text-gray-400">
+                                {displayTime(task.time)}
+                              </span>
+                            )}
+                          </button>
+
+                          {/* Subtle pencil — opens the edit sheet without
+                              toggling completion. */}
+                          <button
+                            type="button"
+                            onClick={() => openEdit(task)}
+                            aria-label={`Edit ${task.name}`}
+                            className="shrink-0 p-2 text-gray-300 transition active:scale-90 hover:text-gray-500"
                           >
-                            <span className="relative inline-block">
-                              {task.name}
-                              <span
-                                className={`pointer-events-none absolute left-0 top-1/2 h-px w-full origin-left bg-current transition-transform duration-200 ease-out ${
-                                  isDone ? "scale-x-100" : "scale-x-0"
-                                }`}
-                              />
-                            </span>
-                          </span>
-
-                          {/* Time on the right */}
-                          {task.time && (
-                            <span className="text-[11px] text-gray-400">
-                              {task.time}
-                            </span>
-                          )}
-                        </button>
+                            <svg
+                              width="14"
+                              height="14"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              aria-hidden="true"
+                            >
+                              <path d="M12 20h9" />
+                              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                            </svg>
+                          </button>
+                        </div>
                       );
                     })}
                   </div>
@@ -264,9 +395,37 @@ export default function TodayPage() {
             })}
           </div>
         )}
+
+        {/* Add task — subtle, sits below the list (and shows in the empty
+            state too, so a user can build a routine by hand). */}
+        <button
+          type="button"
+          onClick={openAdd}
+          className="mt-8 w-full rounded-lg border border-dashed border-gray-200 py-3 text-[13px] font-medium text-[#534AB7] transition active:scale-[0.99]"
+        >
+          + Add task
+        </button>
       </div>
     </main>
     <BottomNav />
+
+    {/* Add/edit bottom sheet. `initial` pre-fills when editing; `onDelete` is
+        only passed for an existing task, which is what shows the Delete action. */}
+    <TaskEditSheet
+      open={sheetOpen}
+      initial={
+        editingTask
+          ? {
+              name: editingTask.name,
+              time: editingTask.time ? displayTime(editingTask.time) : "",
+              section: editingTask.section,
+            }
+          : null
+      }
+      onClose={() => setSheetOpen(false)}
+      onSave={handleSave}
+      onDelete={editingTask ? handleDelete : undefined}
+    />
     </>
   );
 }
