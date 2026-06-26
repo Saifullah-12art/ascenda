@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import BottomNav from "@/components/BottomNav";
 import Loading from "@/components/Loading";
 import TaskEditSheet, { type TaskFormValues } from "@/components/TaskEditSheet";
+import { taskIcon } from "@/lib/taskIcon";
 
 // A task row as stored in the `tasks` table.
 type Task = {
@@ -304,6 +305,9 @@ export default function TodayPage() {
                   <div className="flex flex-col gap-1">
                     {sectionTasks.map((task) => {
                       const isDone = doneIds.has(task.id);
+                      // Contextual icon derived from the name at render time —
+                      // no schema/data change, works for AI and hand-added tasks.
+                      const icon = taskIcon(task.name);
                       return (
                         <div key={task.id} className="flex items-center gap-1">
                           {/* Tap-to-complete area — unchanged behavior, just no
@@ -336,6 +340,19 @@ export default function TodayPage() {
                                   <polyline points="20 6 9 17 4 12" />
                                 </svg>
                               </span>
+                            </span>
+
+                            {/* Contextual icon in a small soft-tinted tile —
+                                sits between the check circle and the name to make
+                                the row warm and scannable. Flat: rounded, no
+                                shadow. Dims with the row when the task is done. */}
+                            <span
+                              className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[14px] transition-opacity duration-200 ${
+                                icon.tint
+                              } ${isDone ? "opacity-50" : "opacity-100"}`}
+                              aria-hidden="true"
+                            >
+                              {icon.emoji}
                             </span>
 
                             {/* Task name — color fades and the strikethrough line
