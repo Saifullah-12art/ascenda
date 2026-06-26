@@ -217,7 +217,8 @@ export default function LandingPage() {
             Start rising today
           </h2>
           <p className="mx-auto mt-4 max-w-md text-[16px] leading-relaxed text-white/80">
-            Build your routine, post what's real, and rise with your friends.
+            Build your routine, post what&apos;s real, and rise with your
+            friends.
           </p>
           <Link
             href="/signup"
