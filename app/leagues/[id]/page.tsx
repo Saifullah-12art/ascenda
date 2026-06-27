@@ -29,13 +29,11 @@ type Post = {
   created_at: string;
 };
 
-// Up to two initials from a name, e.g. "Jane Doe" -> "JD", "madonna" -> "M".
-function initials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "?";
-  const first = parts[0][0];
-  const last = parts.length > 1 ? parts[parts.length - 1][0] : "";
-  return (first + last).toUpperCase();
+// First initial of a name for the avatar tiles, e.g. "Jane Doe" -> "J".
+// Matches the single-letter avatars on the profile and leaderboard screens.
+function firstInitial(name: string): string {
+  const trimmed = name.trim();
+  return trimmed ? trimmed.charAt(0).toUpperCase() : "?";
 }
 
 // Compact relative time from an ISO timestamp: "just now", "3h ago", "2d ago".
@@ -150,33 +148,46 @@ export default function LeagueDetailPage() {
             ← Leagues
           </Link>
 
-          {/* Header: league name + invite code */}
-          <h1 className="mt-3 text-[17px] font-medium text-gray-900">
+          {/* Header: league name, muted member count, and the invite code chip */}
+          <h1 className="mt-4 text-[18px] font-medium text-gray-900">
             {league.name}
           </h1>
-          <div className="mt-3 flex items-center justify-between rounded-lg bg-[#EEEDFE] px-3 py-2">
-            <span className="text-[11px] font-medium tracking-wide text-[#534AB7]">
-              {league.invite_code}
-            </span>
+          <p className="mt-0.5 text-[11px] text-gray-400">
+            {members.length} {members.length === 1 ? "member" : "members"}
+          </p>
+
+          {/* Invite code in a light-purple chip with the Copy button */}
+          <div className="mt-4 flex items-center justify-between rounded-2xl bg-[#EEEDFE] px-4 py-3">
+            <div className="min-w-0">
+              <p className="text-[10px] uppercase tracking-wide text-[#534AB7]/60">
+                Invite code
+              </p>
+              <p className="mt-0.5 text-[14px] font-medium tracking-wide text-[#534AB7]">
+                {league.invite_code}
+              </p>
+            </div>
             <button
               type="button"
               onClick={handleCopy}
-              className="text-[11px] font-medium text-[#534AB7]"
+              className="shrink-0 rounded-full bg-white px-3 py-1.5 text-[12px] font-medium text-[#534AB7] transition active:scale-95"
             >
               {copied ? "Copied" : "Copy"}
             </button>
           </div>
 
-          {/* Members */}
+          {/* Members — first-initial avatar tiles in a small grid */}
           <section className="mt-8">
             <p className="text-[11px] uppercase tracking-wide text-gray-400">
-              Members · {members.length}
+              Members
             </p>
-            <div className="mt-4 flex flex-col gap-3">
+            <div className="mt-4 grid grid-cols-2 gap-2">
               {members.map((member) => (
-                <div key={member.user_id} className="flex items-center gap-3">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#EEEDFE] text-[11px] font-medium text-[#534AB7]">
-                    {initials(member.member_name)}
+                <div
+                  key={member.user_id}
+                  className="flex items-center gap-3 rounded-2xl bg-[#EEEDFE]/40 px-3 py-2.5"
+                >
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#EEEDFE] text-[13px] font-medium text-[#534AB7]">
+                    {firstInitial(member.member_name)}
                   </span>
                   <span className="truncate text-[13px] text-gray-900">
                     {member.member_name}
@@ -198,13 +209,16 @@ export default function LeagueDetailPage() {
                 No one in this league has posted yet.
               </p>
             ) : (
-              // Posts, newest first, with subtle separators between them.
-              <div className="mt-4 flex flex-col divide-y-[0.5px] divide-gray-200">
+              // Posts, newest first, as rounded tinted cards (matches the Feed).
+              <div className="mt-4 flex flex-col gap-3">
                 {posts.map((post) => (
-                  <article key={post.id} className="flex gap-3 py-5">
-                    {/* Avatar with the author's initials */}
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#EEEDFE] text-[11px] font-medium text-[#534AB7]">
-                      {initials(post.author_name)}
+                  <article
+                    key={post.id}
+                    className="flex gap-3 rounded-2xl bg-[#EEEDFE]/40 px-4 py-4"
+                  >
+                    {/* First-initial avatar tile */}
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#EEEDFE] text-[13px] font-medium text-[#534AB7]">
+                      {firstInitial(post.author_name)}
                     </span>
 
                     <div className="min-w-0 flex-1">
@@ -218,21 +232,15 @@ export default function LeagueDetailPage() {
                         </span>
                       </div>
 
-                      {/* The completed task, with a small green check */}
-                      <div className="mt-1.5 flex items-center gap-1.5">
-                        <svg
-                          width="13"
-                          height="13"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="#1D9E75"
-                          strokeWidth="3"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
+                      {/* The accomplishment, with a green check emoji in its own
+                          span (no text-color class) so it keeps its real color. */}
+                      <div className="mt-1.5 flex items-start gap-1.5">
+                        <span
+                          className="text-[13px] leading-snug"
                           aria-hidden="true"
                         >
-                          <polyline points="20 6 9 17 4 12" />
-                        </svg>
+                          ✅
+                        </span>
                         <span className="text-[13px] text-gray-800">
                           {post.task_did}
                         </span>
