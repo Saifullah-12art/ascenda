@@ -135,12 +135,48 @@ export default function ProfilePage() {
     return streak;
   }
 
+  // Best streak: the longest run of consecutive qualifying days anywhere in the
+  // user's history. Only days with completions can qualify, so we walk the
+  // qualifying dates in chronological order and measure the longest unbroken
+  // run (gaps of more than one calendar day reset the count).
+  function computeBestStreak(): number {
+    const qualifyingDates = Object.keys(countByDate)
+      .filter((d) => qualifies(d))
+      .sort(); // ISO "YYYY-MM-DD" strings sort chronologically
+
+    let best = 0;
+    let run = 0;
+    let prev: Date | null = null;
+    for (const ds of qualifyingDates) {
+      const d = new Date(`${ds}T00:00:00`); // local midnight
+      if (prev) {
+        const diffDays = Math.round((d.getTime() - prev.getTime()) / 86_400_000);
+        run = diffDays === 1 ? run + 1 : 1;
+      } else {
+        run = 1;
+      }
+      best = Math.max(best, run);
+      prev = d;
+    }
+    return best;
+  }
+
+  // Done this week: total completions across the last 7 local days.
+  function computeDoneThisWeek(): number {
+    return lastSevenDays().reduce(
+      (sum, d) => sum + (countByDate[localDateStr(d)] ?? 0),
+      0
+    );
+  }
+
   // Show a loading state while data is fetching.
   if (loading) {
     return <Loading />;
   }
 
   const streak = computeStreak();
+  const bestStreak = computeBestStreak();
+  const doneThisWeek = computeDoneThisWeek();
   const days = lastSevenDays();
   const todayStr = localDateStr(new Date());
   const memberSince = profile
@@ -176,21 +212,41 @@ export default function ProfilePage() {
 
         {/* Streak card */}
         <div className="mt-8 flex items-center gap-3 rounded-2xl bg-[#E1F5EE] px-5 py-4">
-          {/* Flame icon */}
-          <svg
-            width="28"
-            height="28"
-            viewBox="0 0 24 24"
-            fill="#1D9E75"
-            aria-hidden="true"
-          >
-            <path d="M12 2c0 3-4 4.5-4 8a4 4 0 0 0 1.2 2.86C8.46 12.2 8 11 8 9.5c2 1 2.5 2.5 2.5 4 0 .9-.4 1.7-.4 2.5a4 4 0 1 0 7.9-1c0-2.5-1.5-3.5-2-5.5-.4 1-1 1.5-1.8 1.8C16 8 14 6 14 4c0-.8-.7-1.4-2-2z" />
-          </svg>
+          {/* Flame — its own span with no text-color class, so the green
+              number color below can't recolor the emoji into a flat shape. */}
+          <span className="text-[28px] leading-none" aria-hidden="true">
+            🔥
+          </span>
           <div>
             <p className="text-[24px] font-medium leading-none text-[#1D9E75]">
               {streak} {streak === 1 ? "day" : "days"}
             </p>
             <p className="mt-1 text-[11px] text-[#1D9E75]/70">current streak</p>
+          </div>
+        </div>
+
+        {/* Stat tiles — tinted, rounded, flat (matches the Today screen). */}
+        <div className="mt-3 grid grid-cols-2 gap-3">
+          {/* Best streak */}
+          <div className="rounded-2xl bg-[#EEEDFE] px-4 py-4">
+            <span className="text-[20px] leading-none" aria-hidden="true">
+              🏆
+            </span>
+            <p className="mt-2 text-[24px] font-medium leading-none text-[#534AB7]">
+              {bestStreak}
+            </p>
+            <p className="mt-1 text-[11px] text-[#534AB7]/70">Best streak</p>
+          </div>
+
+          {/* Done this week */}
+          <div className="rounded-2xl bg-[#E1F5EE] px-4 py-4">
+            <span className="text-[20px] leading-none" aria-hidden="true">
+              ✅
+            </span>
+            <p className="mt-2 text-[24px] font-medium leading-none text-[#1D9E75]">
+              {doneThisWeek}
+            </p>
+            <p className="mt-1 text-[11px] text-[#1D9E75]/70">Done this week</p>
           </div>
         </div>
 
