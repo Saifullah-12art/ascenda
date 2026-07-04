@@ -89,7 +89,7 @@ export async function GET(request: Request) {
 
   // 5. Nobody to email — finish cleanly without calling Resend.
   if (recipientIds.length === 0) {
-    const summary = { ...summaryBase, toRemind: 0, emailed: 0 };
+    const summary = { ...summaryBase, toRemind: 0, emailed: 0, failed: 0 };
     console.log("[daily-reminder]", summary);
     return NextResponse.json(summary);
   }
@@ -124,6 +124,7 @@ export async function GET(request: Request) {
   }
 
   let emailed = 0;
+  let failed = 0;
   for (const id of recipientIds) {
     const email = emailById.get(id);
     if (!email) continue; // no auth email on file — skip
@@ -132,7 +133,7 @@ export async function GET(request: Request) {
     const unsubscribeUrl = `${APP_URL}/api/unsubscribe?u=${id}`;
 
     try {
-      const { error } = await resend.emails.send({
+      const { data, error } = await resend.emails.send({
         from,
         to: email,
         subject: "Your routine is waiting 🌱",
@@ -167,17 +168,30 @@ export async function GET(request: Request) {
         `,
       });
 
-      if (error) {
-        console.error(`[daily-reminder] send failed for ${id}:`, error);
+      // Resend returns { data: { id }, error }. A confirmed send has an `id`
+      // and no `error`; anything else (error object, or a response with no id)
+      // is a failure and must not be counted as emailed.
+      if (error || !data?.id) {
+        failed++;
+        console.error(
+          `[daily-reminder] send failed for ${id} <${email}>:`,
+          error ?? "no id returned in response"
+        );
       } else {
         emailed++;
       }
     } catch (err) {
-      console.error(`[daily-reminder] send threw for ${id}:`, err);
+      failed++;
+      console.error(`[daily-reminder] send threw for ${id} <${email}>:`, err);
     }
   }
 
-  const summary = { ...summaryBase, toRemind: recipientIds.length, emailed };
+  const summary = {
+    ...summaryBase,
+    toRemind: recipientIds.length,
+    emailed,
+    failed,
+  };
   console.log("[daily-reminder]", summary);
   return NextResponse.json(summary);
 }
