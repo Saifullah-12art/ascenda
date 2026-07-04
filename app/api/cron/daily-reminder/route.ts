@@ -174,7 +174,7 @@ export async function GET(request: Request) {
       if (error || !data?.id) {
         failed++;
         console.error(
-          `[daily-reminder] send failed for ${id} <${email}>:`,
+          `[daily-reminder] send failed for ${id}:`,
           error ?? "no id returned in response"
         );
       } else {
@@ -182,7 +182,7 @@ export async function GET(request: Request) {
       }
     } catch (err) {
       failed++;
-      console.error(`[daily-reminder] send threw for ${id} <${email}>:`, err);
+      console.error(`[daily-reminder] send threw for ${id}:`, err);
     }
   }
 
