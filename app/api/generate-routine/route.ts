@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { createClient } from "@/lib/supabase/server";
+import { getRequestUser } from "@/lib/supabase/request-auth";
+import { createAdminClient } from "@/lib/supabase/admin";
 import {
   type GeneratedTask,
   SYSTEM_PROMPT,
@@ -11,15 +12,55 @@ import {
   MIN_SAFE_TASKS,
 } from "./core";
 
-export async function POST() {
-  // 1. Require a logged-in user.
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+// Rate limit: at most this many generation attempts per user per rolling 24h.
+// Attempts are logged before the Claude call, so failures count too — the
+// limit protects API credits, not just successful generations.
+const GENERATION_LIMIT = 5;
+const WINDOW_MS = 24 * 60 * 60 * 1000;
+
+export async function POST(request: Request) {
+  // 1. Require a logged-in user — via session cookies (web) or an
+  //    Authorization: Bearer header (mobile). Either way, `supabase` is an
+  //    RLS-scoped client acting as that user.
+  const { user, supabase } = await getRequestUser(request);
 
   if (!user) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  }
+
+  // 1b. Rate limit. generation_log has RLS with no client policies, so it is
+  //     readable/writable only through the service-role client here.
+  const admin = createAdminClient();
+  const windowStart = new Date(Date.now() - WINDOW_MS);
+
+  const { data: recentAttempts, error: limitError } = await admin
+    .from("generation_log")
+    .select("created_at")
+    .eq("user_id", user.id)
+    .gte("created_at", windowStart.toISOString())
+    .order("created_at", { ascending: true });
+
+  if (limitError) {
+    return NextResponse.json({ error: limitError.message }, { status: 500 });
+  }
+
+  if ((recentAttempts?.length ?? 0) >= GENERATION_LIMIT) {
+    // The next slot opens when the oldest attempt in the window ages out.
+    const oldest = new Date(recentAttempts![0].created_at as string);
+    const retryAfterSeconds = Math.max(
+      1,
+      Math.ceil((oldest.getTime() + WINDOW_MS - Date.now()) / 1000)
+    );
+    return NextResponse.json(
+      {
+        error:
+          "You've reached the routine generation limit (5 per day). Please try again later.",
+      },
+      {
+        status: 429,
+        headers: { "Retry-After": String(retryAfterSeconds) },
+      }
+    );
   }
 
   // 2. Load the user's onboarding answers from their profile.
@@ -53,6 +94,16 @@ export async function POST() {
       { error: "ANTHROPIC_API_KEY is not configured." },
       { status: 500 }
     );
+  }
+
+  // Log the attempt BEFORE calling Claude, so failed generations also count
+  // toward the limit — every attempt past this point spends API credits.
+  const { error: logError } = await admin
+    .from("generation_log")
+    .insert({ user_id: user.id });
+
+  if (logError) {
+    return NextResponse.json({ error: logError.message }, { status: 500 });
   }
 
   const anthropic = new Anthropic({ apiKey });
