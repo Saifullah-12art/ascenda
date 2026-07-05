@@ -28,41 +28,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
-  // 1b. Rate limit. generation_log has RLS with no client policies, so it is
-  //     readable/writable only through the service-role client here.
-  const admin = createAdminClient();
-  const windowStart = new Date(Date.now() - WINDOW_MS);
-
-  const { data: recentAttempts, error: limitError } = await admin
-    .from("generation_log")
-    .select("created_at")
-    .eq("user_id", user.id)
-    .gte("created_at", windowStart.toISOString())
-    .order("created_at", { ascending: true });
-
-  if (limitError) {
-    return NextResponse.json({ error: limitError.message }, { status: 500 });
-  }
-
-  if ((recentAttempts?.length ?? 0) >= GENERATION_LIMIT) {
-    // The next slot opens when the oldest attempt in the window ages out.
-    const oldest = new Date(recentAttempts![0].created_at as string);
-    const retryAfterSeconds = Math.max(
-      1,
-      Math.ceil((oldest.getTime() + WINDOW_MS - Date.now()) / 1000)
-    );
-    return NextResponse.json(
-      {
-        error:
-          "You've reached the routine generation limit (5 per day). Please try again later.",
-      },
-      {
-        status: 429,
-        headers: { "Retry-After": String(retryAfterSeconds) },
-      }
-    );
-  }
-
   // 2. Load the user's onboarding answers from their profile.
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
@@ -96,14 +61,67 @@ export async function POST(request: Request) {
     );
   }
 
-  // Log the attempt BEFORE calling Claude, so failed generations also count
-  // toward the limit — every attempt past this point spends API credits.
-  const { error: logError } = await admin
+  // 4b. Rate limit + attempt log, insert-first so concurrent requests can't
+  //     slip past a stale count: log THIS attempt, then count the user's
+  //     attempts in the window (own row included). A burst of parallel
+  //     requests each insert before any of them counts, so they see each
+  //     other's rows and self-block. Landing over the limit deletes our own
+  //     row before the 429 — attempts that never reach Claude don't burn a
+  //     slot, and retry-tapping can't extend the user's own lockout. A
+  //     boundary race can still let roughly one extra request through;
+  //     accepted at current scale. If that ever matters, the upgrade path is
+  //     a Postgres function wrapping insert+count in
+  //     pg_advisory_xact_lock(hashtext(user_id::text)).
+  //
+  //     generation_log has RLS with no client policies, so it is readable/
+  //     writable only through the service-role client. Sitting after the
+  //     profile checks, cheap failures (400s) never insert a row at all —
+  //     every attempt logged here was about to spend API credits.
+  const admin = createAdminClient();
+  const windowStart = new Date(Date.now() - WINDOW_MS);
+
+  const { data: logRow, error: logError } = await admin
     .from("generation_log")
-    .insert({ user_id: user.id });
+    .insert({ user_id: user.id })
+    .select("id")
+    .single();
 
   if (logError) {
     return NextResponse.json({ error: logError.message }, { status: 500 });
+  }
+
+  const { data: windowAttempts, error: limitError } = await admin
+    .from("generation_log")
+    .select("created_at")
+    .eq("user_id", user.id)
+    .gte("created_at", windowStart.toISOString())
+    .order("created_at", { ascending: true });
+
+  if (limitError) {
+    // Can't tell if we're over the limit — release the slot and fail.
+    await admin.from("generation_log").delete().eq("id", logRow.id);
+    return NextResponse.json({ error: limitError.message }, { status: 500 });
+  }
+
+  if ((windowAttempts?.length ?? 0) > GENERATION_LIMIT) {
+    await admin.from("generation_log").delete().eq("id", logRow.id);
+    // The next slot opens when the oldest remaining attempt ages out. Our own
+    // just-deleted row is the newest, so windowAttempts[0] is a prior one.
+    const oldest = new Date(windowAttempts![0].created_at as string);
+    const retryAfterSeconds = Math.max(
+      1,
+      Math.ceil((oldest.getTime() + WINDOW_MS - Date.now()) / 1000)
+    );
+    return NextResponse.json(
+      {
+        error:
+          "You've reached the routine generation limit (5 per day). Please try again later.",
+      },
+      {
+        status: 429,
+        headers: { "Retry-After": String(retryAfterSeconds) },
+      }
+    );
   }
 
   const anthropic = new Anthropic({ apiKey });
