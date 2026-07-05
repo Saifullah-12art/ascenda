@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { createClient } from "@/lib/supabase/server";
+import { getRequestUser } from "@/lib/supabase/request-auth";
+import { createAdminClient } from "@/lib/supabase/admin";
 import {
   type GeneratedTask,
   SYSTEM_PROMPT,
@@ -11,12 +12,17 @@ import {
   MIN_SAFE_TASKS,
 } from "./core";
 
-export async function POST() {
-  // 1. Require a logged-in user.
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+// Rate limit: at most this many generation attempts per user per rolling 24h.
+// Attempts are logged before the Claude call, so failures count too — the
+// limit protects API credits, not just successful generations.
+const GENERATION_LIMIT = 5;
+const WINDOW_MS = 24 * 60 * 60 * 1000;
+
+export async function POST(request: Request) {
+  // 1. Require a logged-in user — via session cookies (web) or an
+  //    Authorization: Bearer header (mobile). Either way, `supabase` is an
+  //    RLS-scoped client acting as that user.
+  const { user, supabase } = await getRequestUser(request);
 
   if (!user) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
@@ -52,6 +58,91 @@ export async function POST() {
     return NextResponse.json(
       { error: "ANTHROPIC_API_KEY is not configured." },
       { status: 500 }
+    );
+  }
+
+  // 4b. Rate limit + attempt log, insert-first so concurrent requests can't
+  //     slip past a stale count: log THIS attempt, then read the user's
+  //     attempts in the window (own row included) and reject only if our own
+  //     row's position is past the limit. A burst of parallel requests each
+  //     insert before any of them reads, so they see each other's rows and
+  //     exactly the first five (by created_at, then id) proceed. Rejection
+  //     deletes our own row before the 429 — attempts that never reach
+  //     Claude don't burn a slot, and retry-tapping can't extend the user's
+  //     own lockout. A race at the window boundary (a row aging out
+  //     mid-burst) can still admit roughly one extra request; accepted at
+  //     current scale. If that ever matters, the upgrade path is a Postgres
+  //     function wrapping insert+read in
+  //     pg_advisory_xact_lock(hashtext(user_id::text)).
+  //
+  //     generation_log has RLS with no client policies, so it is readable/
+  //     writable only through the service-role client. Sitting after the
+  //     profile checks, cheap failures (400s) never insert a row at all —
+  //     every attempt logged here was about to spend API credits.
+  const admin = createAdminClient();
+  const windowStart = new Date(Date.now() - WINDOW_MS);
+
+  const { data: logRow, error: logError } = await admin
+    .from("generation_log")
+    .insert({ user_id: user.id })
+    .select("id")
+    .single();
+
+  if (logError) {
+    // Admin-client errors never reach the client — log server-side only.
+    console.error("[generate-routine] rate-limit log insert failed:", logError);
+    return NextResponse.json(
+      { error: "Something went wrong. Please try again." },
+      { status: 500 }
+    );
+  }
+
+  const { data: windowAttempts, error: limitError } = await admin
+    .from("generation_log")
+    .select("id, created_at")
+    .eq("user_id", user.id)
+    .gte("created_at", windowStart.toISOString())
+    .order("created_at", { ascending: true })
+    .order("id", { ascending: true });
+
+  if (limitError) {
+    // Can't tell if we're over the limit — release the slot and fail.
+    await admin.from("generation_log").delete().eq("id", logRow.id);
+    console.error("[generate-routine] rate-limit window read failed:", limitError);
+    return NextResponse.json(
+      { error: "Something went wrong. Please try again." },
+      { status: 500 }
+    );
+  }
+
+  // Positional check, so a burst is fair: with the window ordered by
+  // (created_at, id) — id as the deterministic tiebreak for identical
+  // timestamps — the first GENERATION_LIMIT rows keep their slots and only
+  // this request rejects itself if its OWN row sits past them. Later inserts
+  // always order after ours (monotonic ids), so our position is stable.
+  const ownPosition = (windowAttempts ?? []).findIndex(
+    (row) => row.id === logRow.id
+  );
+
+  if (ownPosition >= GENERATION_LIMIT) {
+    await admin.from("generation_log").delete().eq("id", logRow.id);
+    // The next slot opens when the oldest remaining attempt ages out. Our own
+    // just-deleted row ordered past the first five, so windowAttempts[0] is a
+    // prior one.
+    const oldest = new Date(windowAttempts![0].created_at as string);
+    const retryAfterSeconds = Math.max(
+      1,
+      Math.ceil((oldest.getTime() + WINDOW_MS - Date.now()) / 1000)
+    );
+    return NextResponse.json(
+      {
+        error:
+          "You've reached the routine generation limit (5 per day). Please try again later.",
+      },
+      {
+        status: 429,
+        headers: { "Retry-After": String(retryAfterSeconds) },
+      }
     );
   }
 
