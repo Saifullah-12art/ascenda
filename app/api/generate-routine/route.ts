@@ -62,15 +62,17 @@ export async function POST(request: Request) {
   }
 
   // 4b. Rate limit + attempt log, insert-first so concurrent requests can't
-  //     slip past a stale count: log THIS attempt, then count the user's
-  //     attempts in the window (own row included). A burst of parallel
-  //     requests each insert before any of them counts, so they see each
-  //     other's rows and self-block. Landing over the limit deletes our own
-  //     row before the 429 — attempts that never reach Claude don't burn a
-  //     slot, and retry-tapping can't extend the user's own lockout. A
-  //     boundary race can still let roughly one extra request through;
-  //     accepted at current scale. If that ever matters, the upgrade path is
-  //     a Postgres function wrapping insert+count in
+  //     slip past a stale count: log THIS attempt, then read the user's
+  //     attempts in the window (own row included) and reject only if our own
+  //     row's position is past the limit. A burst of parallel requests each
+  //     insert before any of them reads, so they see each other's rows and
+  //     exactly the first five (by created_at, then id) proceed. Rejection
+  //     deletes our own row before the 429 — attempts that never reach
+  //     Claude don't burn a slot, and retry-tapping can't extend the user's
+  //     own lockout. A race at the window boundary (a row aging out
+  //     mid-burst) can still admit roughly one extra request; accepted at
+  //     current scale. If that ever matters, the upgrade path is a Postgres
+  //     function wrapping insert+read in
   //     pg_advisory_xact_lock(hashtext(user_id::text)).
   //
   //     generation_log has RLS with no client policies, so it is readable/
@@ -87,26 +89,46 @@ export async function POST(request: Request) {
     .single();
 
   if (logError) {
-    return NextResponse.json({ error: logError.message }, { status: 500 });
+    // Admin-client errors never reach the client — log server-side only.
+    console.error("[generate-routine] rate-limit log insert failed:", logError);
+    return NextResponse.json(
+      { error: "Something went wrong. Please try again." },
+      { status: 500 }
+    );
   }
 
   const { data: windowAttempts, error: limitError } = await admin
     .from("generation_log")
-    .select("created_at")
+    .select("id, created_at")
     .eq("user_id", user.id)
     .gte("created_at", windowStart.toISOString())
-    .order("created_at", { ascending: true });
+    .order("created_at", { ascending: true })
+    .order("id", { ascending: true });
 
   if (limitError) {
     // Can't tell if we're over the limit — release the slot and fail.
     await admin.from("generation_log").delete().eq("id", logRow.id);
-    return NextResponse.json({ error: limitError.message }, { status: 500 });
+    console.error("[generate-routine] rate-limit window read failed:", limitError);
+    return NextResponse.json(
+      { error: "Something went wrong. Please try again." },
+      { status: 500 }
+    );
   }
 
-  if ((windowAttempts?.length ?? 0) > GENERATION_LIMIT) {
+  // Positional check, so a burst is fair: with the window ordered by
+  // (created_at, id) — id as the deterministic tiebreak for identical
+  // timestamps — the first GENERATION_LIMIT rows keep their slots and only
+  // this request rejects itself if its OWN row sits past them. Later inserts
+  // always order after ours (monotonic ids), so our position is stable.
+  const ownPosition = (windowAttempts ?? []).findIndex(
+    (row) => row.id === logRow.id
+  );
+
+  if (ownPosition >= GENERATION_LIMIT) {
     await admin.from("generation_log").delete().eq("id", logRow.id);
     // The next slot opens when the oldest remaining attempt ages out. Our own
-    // just-deleted row is the newest, so windowAttempts[0] is a prior one.
+    // just-deleted row ordered past the first five, so windowAttempts[0] is a
+    // prior one.
     const oldest = new Date(windowAttempts![0].created_at as string);
     const retryAfterSeconds = Math.max(
       1,
