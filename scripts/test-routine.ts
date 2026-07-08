@@ -182,9 +182,11 @@ function buildFixtures(today: string): BehaviorFixture[] {
       label: "low overall completion",
       summary: buildBehaviorSummary(
         fixtureTasks(),
+        // t1 spans all six offsets so every day counts as active; everything
+        // else is sparse. 6 active days, 13 completions, ~36% overall.
         fixtureCompletions(
           [0, 2, 4, 6, 9, 12],
-          { t1: 4, t2: 3, t3: 2, t4: 1, t5: 1, t6: 1 }
+          { t1: 6, t2: 3, t3: 2, t4: 1, t5: 1, t6: 0 }
         ),
         today
       ),
