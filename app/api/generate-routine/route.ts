@@ -4,13 +4,29 @@ import { getRequestUser } from "@/lib/supabase/request-auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   type GeneratedTask,
+  type BehaviorTaskRow,
+  type BehaviorCompletionRow,
   SYSTEM_PROMPT,
   buildUserMessage,
+  buildBehaviorSummary,
+  behaviorWindowStart,
   parseTasksFromText,
   filterSafeTasks,
   DEFAULT_SAFE_TASKS,
   MIN_SAFE_TASKS,
 } from "./core";
+
+// Local YYYY-MM-DD for "today" on the server — same formatting convention the
+// clients use for completions.date. Client dates are user-local while this is
+// server-local (UTC on Vercel), so the summary window can be off by a day at
+// the edges; acceptable for a 14-day behavioral digest.
+function localToday(): string {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, "0");
+  const d = String(now.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
 
 // Rate limit: at most this many generation attempts per user per rolling 24h.
 // Attempts are logged before the Claude call, so failures count too — the
@@ -47,10 +63,47 @@ export async function POST(request: Request) {
     );
   }
 
+  // 2b. AI coach v1: read the user's current tasks and recent completions
+  //     (RLS scopes both to the caller; the explicit eq matches the delete
+  //     below) and compute the behavior summary. This MUST happen before the
+  //     task delete at step 6 — completions cascade away with their tasks, so
+  //     this is the last look at the outgoing routine's history. A read error
+  //     here degrades gracefully: generation proceeds without a summary,
+  //     exactly as it worked before this feature.
+  const todayStr = localToday();
+  let behaviorSummary: string | null = null;
+  {
+    const [tasksRes, completionsRes] = await Promise.all([
+      supabase
+        .from("tasks")
+        .select("id, name, section, created_at")
+        .eq("user_id", user.id),
+      supabase
+        .from("completions")
+        .select("task_id, date")
+        .eq("user_id", user.id)
+        .gte("date", behaviorWindowStart(todayStr)),
+    ]);
+    if (tasksRes.error || completionsRes.error) {
+      console.warn(
+        "[generate-routine] behavior reads failed; generating without summary:",
+        tasksRes.error?.message ?? completionsRes.error?.message
+      );
+    } else {
+      behaviorSummary = buildBehaviorSummary(
+        (tasksRes.data ?? []) as BehaviorTaskRow[],
+        (completionsRes.data ?? []) as BehaviorCompletionRow[],
+        todayStr
+      );
+    }
+  }
+
   // 3. Build the system prompt and user message from the shared core module
-  //    (the same prompt the dev test script exercises).
+  //    (the same prompt the dev test script exercises). With no behavior
+  //    summary (new user, sub-threshold history, or read error) the user
+  //    message is byte-identical to the pre-coach prompt.
   const systemPrompt = SYSTEM_PROMPT;
-  const userMessage = buildUserMessage(answers);
+  const userMessage = buildUserMessage(answers, behaviorSummary);
 
   // 4. Call Claude (server-side only — key never leaves the server).
   const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -230,6 +283,12 @@ export async function POST(request: Request) {
   }
 
   // 6. Clean regeneration: delete this user's existing tasks first.
+  //    KNOWN LIMITATION (v1): completions.task_id is ON DELETE CASCADE, so
+  //    this also wipes the completion history the behavior summary is built
+  //    from — history restarts with each regeneration. Acceptable for v1
+  //    because the summary was computed at step 2b, before this point;
+  //    preserving history across regenerations is tracked as a v1.5
+  //    follow-up.
   const { error: deleteError } = await supabase
     .from("tasks")
     .delete()
