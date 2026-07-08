@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
-import { createClient } from "@/lib/supabase/server";
+import { getRequestUser } from "@/lib/supabase/request-auth";
 
 // A single ranked leaderboard entry returned to the client.
 type LeaderboardRow = {
@@ -43,16 +43,14 @@ function initialsOf(name: string | null): string {
   return (first + last).toUpperCase() || "?";
 }
 
-export async function GET() {
-  // 1) Authenticate via the normal cookie-based server client. RLS still applies
-  // here — this only confirms *who* is asking and gives us their id.
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+export async function GET(request: Request) {
+  // 1) Authenticate via session cookies (web) or an Authorization: Bearer
+  // header (mobile). This only confirms *who* is asking and gives us their id;
+  // the data reads below go through the service-role client either way.
+  const { user } = await getRequestUser(request);
 
   if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
   const myId = user.id;
 
