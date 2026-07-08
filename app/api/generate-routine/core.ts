@@ -102,6 +102,11 @@ export const DEFAULT_SAFE_TASKS: GeneratedTask[] = [
 // Minimum number of safe tasks a routine must have to be considered usable.
 export const MIN_SAFE_TASKS = 4;
 
+// Hard ceiling on routine size. The system prompt says "never more than 7",
+// but that was prompt-only until now — parseTasksFromText enforces it in code
+// so an over-long response is rejected (and retried) instead of saved.
+export const MAX_TASKS = 7;
+
 // Human-readable labels for the five onboarding answers, used to build the
 // user message. The keys match profiles.onboarding_answers.
 export const ANSWER_LABELS: Record<string, string> = {
@@ -151,8 +156,21 @@ export function buildUserMessage(answers: Record<string, string>): string {
   return `Here is the user's profile from onboarding:\n\n${answerSummary}\n\nGenerate their personalized daily routine as JSON. Keep it realistic, sustainable, and safe — scaled to where this person actually is right now, not an idealized version of them.`;
 }
 
+// Valid "HH:MM" 24-hour time, zero-padded — the exact format the prompt asks
+// for and the format the rest of the app stores and sorts as a string.
+const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+const VALID_SECTIONS: ReadonlySet<string> = new Set([
+  "morning",
+  "afternoon",
+  "evening",
+]);
+
 // Parse Claude's raw text response into tasks: strip any ```json fences just
-// in case, then JSON.parse and validate the shape. Throws on bad output.
+// in case, then JSON.parse and validate the shape. Every check here throws on
+// bad output so the caller's retry path handles it — including the MAX_TASKS
+// ceiling and per-item shape, which were previously enforced only by the
+// prompt.
 export function parseTasksFromText(rawText: string): GeneratedTask[] {
   const cleaned = rawText
     .trim()
@@ -163,6 +181,29 @@ export function parseTasksFromText(rawText: string): GeneratedTask[] {
   const parsed = JSON.parse(cleaned) as { tasks?: GeneratedTask[] };
   if (!parsed.tasks || !Array.isArray(parsed.tasks)) {
     throw new Error("Response JSON did not contain a 'tasks' array.");
+  }
+  if (parsed.tasks.length > MAX_TASKS) {
+    throw new Error(
+      `Response contained ${parsed.tasks.length} tasks — more than the maximum of ${MAX_TASKS}.`
+    );
+  }
+  for (const task of parsed.tasks) {
+    if (!task || typeof task !== "object") {
+      throw new Error("Response contained a non-object task entry.");
+    }
+    if (typeof task.name !== "string" || task.name.trim().length === 0) {
+      throw new Error("Response contained a task with a missing/empty name.");
+    }
+    if (typeof task.time !== "string" || !TIME_RE.test(task.time)) {
+      throw new Error(
+        `Response contained a task with an invalid time: ${JSON.stringify(task.time)}.`
+      );
+    }
+    if (typeof task.section !== "string" || !VALID_SECTIONS.has(task.section)) {
+      throw new Error(
+        `Response contained a task with an invalid section: ${JSON.stringify(task.section)}.`
+      );
+    }
   }
   return parsed.tasks;
 }

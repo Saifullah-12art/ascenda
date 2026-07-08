@@ -169,37 +169,58 @@ export async function POST(request: Request) {
     return parseTasksFromText(rawText);
   };
 
-  // 4 + 5. Generate and parse the first routine. A failure here (API or
-  // unparseable output) is surfaced to the client as before.
-  let generated: GeneratedTask[];
+  // 4 + 5. Generate, parse, and safety-filter — with ONE retry total across
+  // both failure modes. parseTasksFromText now throws on invalid shape and on
+  // more than MAX_TASKS tasks, so an over-long response consumes the retry
+  // like any parse failure instead of being saved or surfaced immediately.
+  // Filtering (5b) is the deterministic safety backstop between parsing and
+  // saving: it screens every task name even if the prompt's guardrails
+  // appeared to hold. Worst case is still exactly two Claude calls.
+  let usedRetry = false;
+  let tasks: GeneratedTask[];
   try {
-    generated = await generateAndParse();
+    tasks = filterSafeTasks(await generateAndParse());
   } catch (err) {
-    const detail = err instanceof Error ? err.message : "Unknown error";
-    return NextResponse.json(
-      { error: `Failed to generate routine from Claude: ${detail}` },
-      { status: 500 }
+    // First attempt failed (API error, unparseable output, or invalid/
+    // oversized shape). Spend the single retry here; if the retry also
+    // fails, surface the error to the client as before.
+    console.warn(
+      "[generate-routine] First generation attempt failed; retrying once:",
+      err instanceof Error ? err.message : err
     );
+    usedRetry = true;
+    try {
+      tasks = filterSafeTasks(await generateAndParse());
+    } catch (retryErr) {
+      const detail =
+        retryErr instanceof Error ? retryErr.message : "Unknown error";
+      return NextResponse.json(
+        { error: `Failed to generate routine from Claude: ${detail}` },
+        { status: 500 }
+      );
+    }
   }
 
-  // 5b. Deterministic safety backstop, applied between parsing and saving.
-  //     Screen every task name and drop anything matching an unsafe pattern,
-  //     even if the prompt's guardrails appeared to hold.
-  let tasks = filterSafeTasks(generated);
-
   // If filtering left too few usable tasks, regenerate once with the same
-  // prompt. If the retry still comes back too short or unsafe, fall back to a
-  // small set of safe defaults so the user always gets a usable, safe routine.
+  // prompt (unless the retry is already spent). If that still comes back too
+  // short or unsafe, fall back to a small set of safe defaults so the user
+  // always gets a usable, safe routine.
   if (tasks.length < MIN_SAFE_TASKS) {
     console.warn(
-      `[generate-routine] Only ${tasks.length} safe task(s) after filtering; regenerating once.`
+      `[generate-routine] Only ${tasks.length} safe task(s) after filtering; ${
+        usedRetry ? "retry already spent" : "regenerating once"
+      }.`
     );
-    try {
-      const retried = filterSafeTasks(await generateAndParse());
-      tasks = retried.length >= MIN_SAFE_TASKS ? retried : DEFAULT_SAFE_TASKS;
-    } catch {
-      // Retry failed outright (API or parse error) — defaults still apply.
+    if (usedRetry) {
       tasks = DEFAULT_SAFE_TASKS;
+    } else {
+      try {
+        const retried = filterSafeTasks(await generateAndParse());
+        tasks = retried.length >= MIN_SAFE_TASKS ? retried : DEFAULT_SAFE_TASKS;
+      } catch {
+        // Retry failed outright (API or parse error) — defaults still apply.
+        tasks = DEFAULT_SAFE_TASKS;
+      }
     }
     if (tasks === DEFAULT_SAFE_TASKS) {
       console.warn(
