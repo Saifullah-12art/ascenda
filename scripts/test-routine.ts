@@ -307,6 +307,16 @@ async function main() {
     ) === null,
     "sub-threshold history (3 active days) produces no summary"
   );
+  hard(
+    buildBehaviorSummary(
+      fixtureTasks(),
+      // 5 active days (meets BEHAVIOR_MIN_ACTIVE_DAYS) but only 9 completions
+      // — exercises the other branch of the minimum-data AND gate.
+      fixtureCompletions([0, 2, 4, 6, 8], { t1: 5, t2: 4 }),
+      today
+    ) === null,
+    "sub-threshold history (5 active days, 9 completions) produces no summary"
+  );
   for (const f of fixtures) {
     if (f.label.startsWith("baseline")) continue;
     hard(f.summary !== null, `fixture "${f.label}" produces a summary block`);
