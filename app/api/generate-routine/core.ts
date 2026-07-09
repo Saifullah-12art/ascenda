@@ -247,15 +247,18 @@ export function buildBehaviorSummary(
   const windowStart = behaviorWindowStart(todayStr);
   const taskById = new Map(tasks.map((t) => [t.id, t]));
 
-  // Distinct completion dates per task, window-filtered. The DB's unique
-  // (task_id, date) constraint already guarantees distinctness; the Set is
-  // defensive. Dates after todayStr (a client a timezone ahead of the
-  // server) are real behavior and stay in.
+  // Distinct completion dates per task, bounded to the window on BOTH edges
+  // (windowStart <= date <= todayStr). Without the upper bound, future-dated
+  // completions (client clock skew, or crafted rows) could push the
+  // active-day count past BEHAVIOR_WINDOW_DAYS ("15 of 14 days"). A client a
+  // timezone ahead of the server loses at most its current day — acceptable
+  // for a 14-day digest. The DB's unique (task_id, date) constraint already
+  // guarantees distinctness; the Set is defensive.
   const datesByTask = new Map<string, Set<string>>();
   const activeDays = new Set<string>();
   let totalCompletions = 0;
   for (const c of completions) {
-    if (!c.date || c.date < windowStart) continue;
+    if (!c.date || c.date < windowStart || c.date > todayStr) continue;
     if (!taskById.has(c.task_id)) continue;
     activeDays.add(c.date);
     let dates = datesByTask.get(c.task_id);

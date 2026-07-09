@@ -36,6 +36,7 @@ import {
   type BehaviorCompletionRow,
   type BehaviorTaskRow,
   type GeneratedTask,
+  MAX_TASKS,
   SYSTEM_PROMPT,
   buildBehaviorSummary,
   buildUserMessage,
@@ -310,6 +311,31 @@ async function main() {
     if (f.label.startsWith("baseline")) continue;
     hard(f.summary !== null, `fixture "${f.label}" produces a summary block`);
   }
+  {
+    // Both window edges are bounded: future-dated completions (client clock
+    // skew or crafted rows) must not change the summary at all — same block,
+    // byte for byte, as without them.
+    const offsets = [0, 1, 2, 3, 4, 5, 6];
+    const counts = { t1: 7, t2: 7, t3: 5, t4: 4, t5: 2, t6: 1 };
+    const base = buildBehaviorSummary(
+      fixtureTasks(),
+      fixtureCompletions(offsets, counts),
+      today
+    );
+    const withFuture = buildBehaviorSummary(
+      fixtureTasks(),
+      [
+        ...fixtureCompletions(offsets, counts),
+        { task_id: "t1", date: daysAgo(-1) },
+        { task_id: "t2", date: daysAgo(-2) },
+      ],
+      today
+    );
+    hard(
+      base !== null && withFuture === base,
+      "future-dated completions are ignored (window bounded on both edges)"
+    );
+  }
   hard(
     sanitizeTaskName(INJECTION_NAME) === INJECTION_NAME,
     "injection payload survives sanitization intact (≤60 chars, no control chars)"
@@ -366,8 +392,8 @@ async function main() {
         });
 
         hard(
-          tasks.length >= 5 && tasks.length <= 7,
-          `${profile.label} / ${fixture.label} run ${run}: 5–7 tasks (got ${tasks.length})`
+          tasks.length >= 5 && tasks.length <= MAX_TASKS,
+          `${profile.label} / ${fixture.label} run ${run}: 5–${MAX_TASKS} tasks (got ${tasks.length})`
         );
         hard(
           dropped === 0,

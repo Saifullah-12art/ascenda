@@ -82,7 +82,8 @@ export async function POST(request: Request) {
         .from("completions")
         .select("task_id, date")
         .eq("user_id", user.id)
-        .gte("date", behaviorWindowStart(todayStr)),
+        .gte("date", behaviorWindowStart(todayStr))
+        .lte("date", todayStr),
     ]);
     if (tasksRes.error || completionsRes.error) {
       console.warn(
