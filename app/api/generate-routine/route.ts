@@ -4,13 +4,29 @@ import { getRequestUser } from "@/lib/supabase/request-auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   type GeneratedTask,
+  type BehaviorTaskRow,
+  type BehaviorCompletionRow,
   SYSTEM_PROMPT,
   buildUserMessage,
+  buildBehaviorSummary,
+  behaviorWindowStart,
   parseTasksFromText,
   filterSafeTasks,
   DEFAULT_SAFE_TASKS,
   MIN_SAFE_TASKS,
 } from "./core";
+
+// Local YYYY-MM-DD for "today" on the server — same formatting convention the
+// clients use for completions.date. Client dates are user-local while this is
+// server-local (UTC on Vercel), so the summary window can be off by a day at
+// the edges; acceptable for a 14-day behavioral digest.
+function localToday(): string {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, "0");
+  const d = String(now.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
 
 // Rate limit: at most this many generation attempts per user per rolling 24h.
 // Attempts are logged before the Claude call, so failures count too — the
@@ -47,10 +63,48 @@ export async function POST(request: Request) {
     );
   }
 
+  // 2b. AI coach v1: read the user's current tasks and recent completions
+  //     (RLS scopes both to the caller; the explicit eq matches the delete
+  //     below) and compute the behavior summary. This MUST happen before the
+  //     task delete at step 6 — completions cascade away with their tasks, so
+  //     this is the last look at the outgoing routine's history. A read error
+  //     here degrades gracefully: generation proceeds without a summary,
+  //     exactly as it worked before this feature.
+  const todayStr = localToday();
+  let behaviorSummary: string | null = null;
+  {
+    const [tasksRes, completionsRes] = await Promise.all([
+      supabase
+        .from("tasks")
+        .select("id, name, section, created_at")
+        .eq("user_id", user.id),
+      supabase
+        .from("completions")
+        .select("task_id, date")
+        .eq("user_id", user.id)
+        .gte("date", behaviorWindowStart(todayStr))
+        .lte("date", todayStr),
+    ]);
+    if (tasksRes.error || completionsRes.error) {
+      console.warn(
+        "[generate-routine] behavior reads failed; generating without summary:",
+        tasksRes.error?.message ?? completionsRes.error?.message
+      );
+    } else {
+      behaviorSummary = buildBehaviorSummary(
+        (tasksRes.data ?? []) as BehaviorTaskRow[],
+        (completionsRes.data ?? []) as BehaviorCompletionRow[],
+        todayStr
+      );
+    }
+  }
+
   // 3. Build the system prompt and user message from the shared core module
-  //    (the same prompt the dev test script exercises).
+  //    (the same prompt the dev test script exercises). With no behavior
+  //    summary (new user, sub-threshold history, or read error) the user
+  //    message is byte-identical to the pre-coach prompt.
   const systemPrompt = SYSTEM_PROMPT;
-  const userMessage = buildUserMessage(answers);
+  const userMessage = buildUserMessage(answers, behaviorSummary);
 
   // 4. Call Claude (server-side only — key never leaves the server).
   const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -169,37 +223,58 @@ export async function POST(request: Request) {
     return parseTasksFromText(rawText);
   };
 
-  // 4 + 5. Generate and parse the first routine. A failure here (API or
-  // unparseable output) is surfaced to the client as before.
-  let generated: GeneratedTask[];
+  // 4 + 5. Generate, parse, and safety-filter — with ONE retry total across
+  // both failure modes. parseTasksFromText now throws on invalid shape and on
+  // more than MAX_TASKS tasks, so an over-long response consumes the retry
+  // like any parse failure instead of being saved or surfaced immediately.
+  // Filtering (5b) is the deterministic safety backstop between parsing and
+  // saving: it screens every task name even if the prompt's guardrails
+  // appeared to hold. Worst case is still exactly two Claude calls.
+  let usedRetry = false;
+  let tasks: GeneratedTask[];
   try {
-    generated = await generateAndParse();
+    tasks = filterSafeTasks(await generateAndParse());
   } catch (err) {
-    const detail = err instanceof Error ? err.message : "Unknown error";
-    return NextResponse.json(
-      { error: `Failed to generate routine from Claude: ${detail}` },
-      { status: 500 }
+    // First attempt failed (API error, unparseable output, or invalid/
+    // oversized shape). Spend the single retry here; if the retry also
+    // fails, surface the error to the client as before.
+    console.warn(
+      "[generate-routine] First generation attempt failed; retrying once:",
+      err instanceof Error ? err.message : err
     );
+    usedRetry = true;
+    try {
+      tasks = filterSafeTasks(await generateAndParse());
+    } catch (retryErr) {
+      const detail =
+        retryErr instanceof Error ? retryErr.message : "Unknown error";
+      return NextResponse.json(
+        { error: `Failed to generate routine from Claude: ${detail}` },
+        { status: 500 }
+      );
+    }
   }
 
-  // 5b. Deterministic safety backstop, applied between parsing and saving.
-  //     Screen every task name and drop anything matching an unsafe pattern,
-  //     even if the prompt's guardrails appeared to hold.
-  let tasks = filterSafeTasks(generated);
-
   // If filtering left too few usable tasks, regenerate once with the same
-  // prompt. If the retry still comes back too short or unsafe, fall back to a
-  // small set of safe defaults so the user always gets a usable, safe routine.
+  // prompt (unless the retry is already spent). If that still comes back too
+  // short or unsafe, fall back to a small set of safe defaults so the user
+  // always gets a usable, safe routine.
   if (tasks.length < MIN_SAFE_TASKS) {
     console.warn(
-      `[generate-routine] Only ${tasks.length} safe task(s) after filtering; regenerating once.`
+      `[generate-routine] Only ${tasks.length} safe task(s) after filtering; ${
+        usedRetry ? "retry already spent" : "regenerating once"
+      }.`
     );
-    try {
-      const retried = filterSafeTasks(await generateAndParse());
-      tasks = retried.length >= MIN_SAFE_TASKS ? retried : DEFAULT_SAFE_TASKS;
-    } catch {
-      // Retry failed outright (API or parse error) — defaults still apply.
+    if (usedRetry) {
       tasks = DEFAULT_SAFE_TASKS;
+    } else {
+      try {
+        const retried = filterSafeTasks(await generateAndParse());
+        tasks = retried.length >= MIN_SAFE_TASKS ? retried : DEFAULT_SAFE_TASKS;
+      } catch {
+        // Retry failed outright (API or parse error) — defaults still apply.
+        tasks = DEFAULT_SAFE_TASKS;
+      }
     }
     if (tasks === DEFAULT_SAFE_TASKS) {
       console.warn(
@@ -209,6 +284,12 @@ export async function POST(request: Request) {
   }
 
   // 6. Clean regeneration: delete this user's existing tasks first.
+  //    KNOWN LIMITATION (v1): completions.task_id is ON DELETE CASCADE, so
+  //    this also wipes the completion history the behavior summary is built
+  //    from — history restarts with each regeneration. Acceptable for v1
+  //    because the summary was computed at step 2b, before this point;
+  //    preserving history across regenerations is tracked as a v1.5
+  //    follow-up.
   const { error: deleteError } = await supabase
     .from("tasks")
     .delete()
