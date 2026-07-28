@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import BottomNav from "@/components/BottomNav";
 import Loading from "@/components/Loading";
@@ -58,9 +58,16 @@ function byTime(a: Task, b: Task): number {
   return a.sort_order - b.sort_order;
 }
 
-export default function TodayPage() {
+function TodayView() {
   const router = useRouter();
   const supabase = createClient();
+
+  // Onboarding sends the user here as `/today?new=1` right after generating
+  // their routine — the only time we show the intro line below the header.
+  // Read once into state: the effect below strips the param from the URL, and
+  // we want the line to survive that and stay up for the rest of the visit.
+  const searchParams = useSearchParams();
+  const [isNewRoutine] = useState(() => searchParams.get("new") === "1");
 
   const [today] = useState(localToday); // stable for the lifetime of the screen
   const [loading, setLoading] = useState(true);
@@ -106,6 +113,17 @@ export default function TodayPage() {
   useEffect(() => {
     refresh().finally(() => setLoading(false));
     // supabase/router are stable; run once on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Drop `?new=1` once we've read it, so a refresh or a shared link lands on a
+  // plain /today. `scroll: false` keeps the view put; `isNewRoutine` is already
+  // captured in state, so the line stays visible through this replace.
+  useEffect(() => {
+    if (isNewRoutine) {
+      router.replace("/today", { scroll: false });
+    }
+    // Runs once — `isNewRoutine` never changes after mount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -281,6 +299,15 @@ export default function TodayPage() {
           />
         </div>
 
+        {/* First look at the freshly generated routine — reassure that it's a
+            starting point, not something fixed. */}
+        {isNewRoutine && (
+          <p className="mt-3 text-[12px] leading-relaxed text-gray-500">
+            Here&apos;s your starting routine, built from your answers. Make it
+            yours — edit, add, or remove anything.
+          </p>
+        )}
+
         {error && <p className="mt-4 text-[11px] text-red-500">{error}</p>}
 
         {/* Empty state */}
@@ -444,5 +471,14 @@ export default function TodayPage() {
       onDelete={editingTask ? handleDelete : undefined}
     />
     </>
+  );
+}
+
+// `useSearchParams` needs a Suspense boundary above it in the App Router.
+export default function TodayPage() {
+  return (
+    <Suspense fallback={<Loading />}>
+      <TodayView />
+    </Suspense>
   );
 }
