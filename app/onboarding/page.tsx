@@ -18,7 +18,7 @@ const QUESTIONS = [
   },
   {
     key: "peak_time",
-    title: "When are you at your best?",
+    title: "When are you most productive?",
     options: ["Early morning", "Late morning", "Afternoon", "Night"],
   },
   {
@@ -161,8 +161,9 @@ export default function OnboardingPage() {
         return;
       }
 
-      // Success — head to the day view.
-      router.replace("/today");
+      // Success — head to the day view. `new=1` marks this as the first look at
+      // the generated routine so /today can show its intro line once.
+      router.replace("/today?new=1");
     } catch {
       setError("Couldn't build your routine. Please try again.");
       setBuilding(false);

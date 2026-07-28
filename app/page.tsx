@@ -169,9 +169,9 @@ export default function LandingPage() {
               The feed that gets you off the feed.
             </h1>
             <p className="mt-6 max-w-lg text-[17px] leading-relaxed text-gray-500">
-              An AI-built daily routine, and a feed where you and your friends
-              post the real things you actually did — so it pushes you to act
-              instead of draining you like Instagram.
+              A daily routine built around you, and a feed where you and your
+              friends post the real things you actually did — so it pushes you
+              to act instead of draining you like Instagram.
             </p>
             <div className="mt-8 flex items-center gap-5">
               <Link
