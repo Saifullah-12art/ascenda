@@ -64,7 +64,10 @@ function TodayView() {
 
   // Onboarding sends the user here as `/today?new=1` right after generating
   // their routine — the only time we show the intro line below the header.
-  const isNewRoutine = useSearchParams().get("new") === "1";
+  // Read once into state: the effect below strips the param from the URL, and
+  // we want the line to survive that and stay up for the rest of the visit.
+  const searchParams = useSearchParams();
+  const [isNewRoutine] = useState(() => searchParams.get("new") === "1");
 
   const [today] = useState(localToday); // stable for the lifetime of the screen
   const [loading, setLoading] = useState(true);
@@ -110,6 +113,17 @@ function TodayView() {
   useEffect(() => {
     refresh().finally(() => setLoading(false));
     // supabase/router are stable; run once on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Drop `?new=1` once we've read it, so a refresh or a shared link lands on a
+  // plain /today. `scroll: false` keeps the view put; `isNewRoutine` is already
+  // captured in state, so the line stays visible through this replace.
+  useEffect(() => {
+    if (isNewRoutine) {
+      router.replace("/today", { scroll: false });
+    }
+    // Runs once — `isNewRoutine` never changes after mount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
