@@ -6,10 +6,10 @@ import { createClient } from "@/lib/supabase/client";
 import BottomNav from "@/components/BottomNav";
 import Loading from "@/components/Loading";
 
-// One ranked row as returned by /api/leaderboard.
+// One ranked row as returned by /api/leaderboard. No user id — the API doesn't
+// send one, and `isMe` already marks the caller's own row.
 type LeaderboardRow = {
   rank: number;
-  userId: string;
   name: string;
   initials: string;
   weeklyAvg: number;
@@ -26,9 +26,6 @@ export default function LeaderboardPage() {
 
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<LeaderboardRow[]>([]);
-  // The signed-in user's id, read from the browser client, used to highlight
-  // their own row at a glance.
-  const [myId, setMyId] = useState<string | null>(null);
 
   // On mount: require a user, then fetch the computed leaderboard.
   useEffect(() => {
@@ -41,7 +38,6 @@ export default function LeaderboardPage() {
         router.replace("/");
         return;
       }
-      setMyId(user.id);
 
       const res = await fetch("/api/leaderboard");
       if (res.ok) {
@@ -77,13 +73,12 @@ export default function LeaderboardPage() {
         ) : (
           <div className="mt-7 flex flex-col gap-2">
             {rows.map((row) => {
-              const isMe = row.userId === myId;
               const medal = MEDALS[row.rank];
               return (
                 <div
-                  key={row.userId}
+                  key={row.rank}
                   className={`flex items-center gap-3 rounded-2xl px-3 py-3 ${
-                    isMe ? "bg-[#EEEDFE] ring-1 ring-[#534AB7]/25" : "bg-white"
+                    row.isMe ? "bg-[#EEEDFE] ring-1 ring-[#534AB7]/25" : "bg-white"
                   }`}
                 >
                   {/* Rank — medal for the top three, number otherwise. */}

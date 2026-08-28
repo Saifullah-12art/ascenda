@@ -2,10 +2,12 @@ import { NextResponse } from "next/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { getRequestUser } from "@/lib/supabase/request-auth";
 
-// A single ranked leaderboard entry returned to the client.
+// A single ranked leaderboard entry returned to the client. Deliberately no
+// user id: the raw auth UUID of every other user is not something a client
+// needs, and `isMe` (computed server-side below) is enough to highlight the
+// caller's own row.
 type LeaderboardRow = {
   rank: number;
-  userId: string;
   name: string;
   initials: string;
   weeklyAvg: number;
@@ -132,7 +134,6 @@ export async function GET(request: Request) {
       );
       const name = nameById[uid] ?? "Anonymous";
       return {
-        userId: uid,
         name,
         initials: initialsOf(name),
         weeklyAvg,
