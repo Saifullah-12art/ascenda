@@ -1,6 +1,8 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyUnsubscribeToken } from "@/lib/unsubscribe-token";
 
+// Node.js runtime, pinned explicitly: token verification uses node:crypto
+// (HMAC + timingSafeEqual), which is not available on the Edge runtime.
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 

@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from "crypto";
+import { createHmac, timingSafeEqual } from "node:crypto";
 
 /**
  * Signed unsubscribe tokens.
@@ -23,6 +23,9 @@ import { createHmac, timingSafeEqual } from "crypto";
  * can still read their own user id out of their own token. That's fine — the id
  * was never the secret. What the token buys is that nobody can *forge* one for
  * an id they weren't sent.
+ *
+ * Uses node:crypto, so every route importing this must pin the Node.js runtime
+ * (`export const runtime = "nodejs"`) — it cannot run on Edge.
  */
 
 const VERSION = "v1";
@@ -99,13 +102,21 @@ export function verifyUnsubscribeToken(
     return { ok: false, reason: "invalid" };
   }
 
-  // Constant-time compare so the endpoint can't be used as a signature oracle.
   const expected = Buffer.from(sign(payload), "utf8");
   const provided = Buffer.from(signature, "utf8");
-  if (
-    expected.length !== provided.length ||
-    !timingSafeEqual(expected, provided)
-  ) {
+
+  // timingSafeEqual THROWS on mismatched lengths rather than returning false,
+  // and an uncaught throw here would surface as a 500 instead of the intended
+  // "invalid link" 400. A wrong-length signature is simply wrong, and its
+  // length is public (it is whatever the caller sent), so returning early
+  // leaks nothing that a length check on the input would not.
+  if (expected.length !== provided.length) {
+    return { ok: false, reason: "invalid" };
+  }
+
+  // Equal lengths: compare in constant time so the endpoint cannot be used as
+  // a signature oracle.
+  if (!timingSafeEqual(expected, provided)) {
     return { ok: false, reason: "invalid" };
   }
 
