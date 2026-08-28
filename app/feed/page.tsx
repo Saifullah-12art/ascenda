@@ -10,19 +10,30 @@ import Loading from "@/components/Loading";
 // A post row as stored in the `posts` table (the fields the feed renders).
 type Post = {
   id: string;
-  author_name: string;
+  // Nullable: rows written before the server-side author_name trigger
+  // (0003) carry whatever the client sent, including null and blank names.
+  author_name: string | null;
   task_did: string;
   motivation: string;
   created_at: string;
 };
 
 // Up to two initials from a name, e.g. "Jane Doe" -> "JD", "madonna" -> "M".
-function initials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
+// Tolerates a null or blank name (see Post.author_name) rather than throwing
+// on .trim(), falling back to the same "?" as a name with no usable parts.
+function initials(name: string | null): string {
+  const parts = (name ?? "").trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return "?";
   const first = parts[0][0];
   const last = parts.length > 1 ? parts[parts.length - 1][0] : "";
   return (first + last).toUpperCase();
+}
+
+// The byline for a post. Same nullable-column caveat as initials(): a legacy
+// row with no name renders as "Anonymous", matching what the insert trigger
+// stores for a profile with no full_name.
+function displayName(name: string | null): string {
+  return (name ?? "").trim() || "Anonymous";
 }
 
 // Compact relative time from an ISO timestamp: "just now", "3h ago", "2d ago".
@@ -113,7 +124,7 @@ export default function FeedPage() {
                     {/* Author + relative time */}
                     <div className="flex items-center justify-between gap-2">
                       <span className="truncate text-[13px] font-medium text-gray-900">
-                        {post.author_name}
+                        {displayName(post.author_name)}
                       </span>
                       <span className="shrink-0 text-[10px] text-gray-400">
                         {relativeTime(post.created_at)}
