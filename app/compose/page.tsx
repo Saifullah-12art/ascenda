@@ -38,7 +38,6 @@ export default function ComposePage() {
   const [today] = useState(localToday); // stable for the lifetime of the screen
 
   const [loading, setLoading] = useState(true);
-  const [fullName, setFullName] = useState<string>(""); // author_name snapshot
   const [completedTasks, setCompletedTasks] = useState<CompletedTask[]>([]);
   const [alreadyPosted, setAlreadyPosted] = useState(false);
 
@@ -63,15 +62,14 @@ export default function ComposePage() {
         return;
       }
 
-      // Profile (for the author_name snapshot), all tasks, today's completions,
-      // and any existing post for today — fetched together.
+      // All tasks, today's completions, and any existing post for today —
+      // fetched together. The author name isn't needed here: the database
+      // derives it from the profile on insert.
       const [
-        { data: profile },
         { data: taskRows },
         { data: completionRows },
         { data: existingPost },
       ] = await Promise.all([
-        supabase.from("profiles").select("full_name").eq("id", user.id).single(),
         supabase.from("tasks").select("id, name").order("sort_order", { ascending: true }),
         supabase.from("completions").select("task_id").eq("date", today),
         supabase
@@ -81,8 +79,6 @@ export default function ComposePage() {
           .eq("date", today)
           .maybeSingle(),
       ]);
-
-      setFullName(profile?.full_name ?? "");
 
       // Derive completed tasks: the tasks whose id appears in today's completions.
       const doneIds = new Set((completionRows ?? []).map((c) => c.task_id as string));
@@ -122,11 +118,12 @@ export default function ComposePage() {
       return;
     }
 
-    // Store text snapshots of the task name and author name so the post stays
-    // intact even if the task or profile changes later.
+    // Store a text snapshot of the task name so the post stays intact even if
+    // the task changes later. author_name is deliberately NOT sent: a BEFORE
+    // INSERT trigger fills it from the authenticated user's profile, so the
+    // name can't be spoofed from here (see 0003_posts_author_name_server_side).
     const { error: insertError } = await supabase.from("posts").insert({
       user_id: user.id,
-      author_name: fullName,
       task_did: task.name,
       motivation: motivation.trim(),
       date: today,
