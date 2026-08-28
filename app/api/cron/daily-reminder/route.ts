@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createUnsubscribeToken } from "@/lib/unsubscribe-token";
 
 // This route talks to Resend and the Supabase admin API, so it must run on the
 // Node.js runtime (not Edge) and must never be statically cached.
@@ -130,12 +131,22 @@ export async function GET(request: Request) {
     if (!email) continue; // no auth email on file — skip
 
     const todayUrl = `${APP_URL}/today`;
-    const unsubscribeUrl = `${APP_URL}/api/unsubscribe?u=${id}`;
+    // Signed, expiring token — never the raw user id. /api/unsubscribe verifies
+    // it before any write, so the link can't be forged for another account.
+    const unsubscribeUrl = `${APP_URL}/api/unsubscribe?t=${encodeURIComponent(
+      createUnsubscribeToken(id)
+    )}`;
 
     try {
       const { data, error } = await resend.emails.send({
         from,
         to: email,
+        // RFC 8058 one-click: the mail client’s own unsubscribe button POSTs
+        // to this URL, which is the same endpoint the confirm page posts to.
+        headers: {
+          "List-Unsubscribe": `<${unsubscribeUrl}>`,
+          "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+        },
         subject: "Your routine is waiting 🌱",
         text: [
           "Hi there,",
