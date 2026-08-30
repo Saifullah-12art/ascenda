@@ -1,13 +1,21 @@
 import { NextResponse } from "next/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { getRequestUser } from "@/lib/supabase/request-auth";
+import { opaqueUid } from "@/lib/opaque-uid";
 
 // A single ranked leaderboard entry returned to the client. Deliberately no
-// user id: the raw auth UUID of every other user is not something a client
-// needs, and `isMe` (computed server-side below) is enough to highlight the
-// caller's own row.
+// raw auth UUID: that is not something a client needs, and `isMe` (computed
+// server-side below) is enough to highlight the caller's own row.
+//
+// `uid` is the opaque, stable stand-in for it (see lib/opaque-uid.ts). A client
+// that already holds a user's real UUID — its own league co-members, the
+// authors of the posts it is allowed to read — derives the same value locally
+// and matches it against a row here, which is how the app attaches a streak to
+// a member or a post author. A client that does not hold the UUID learns
+// nothing from this field.
 type LeaderboardRow = {
   rank: number;
+  uid: string;
   name: string;
   initials: string;
   weeklyAvg: number;
@@ -125,20 +133,23 @@ export async function GET(request: Request) {
   }
 
   // 4) Build one row per user who has at least one task.
+  // The map parameter is named `userId` so the opaque `uid` field can own that
+  // name — the two must never be confused at a call site.
   const rows = Object.keys(taskCount)
-    .filter((uid) => taskCount[uid] > 0)
-    .map((uid) => {
-      const dailyPercents = week.map((d) => percentFor(uid, d));
+    .filter((userId) => taskCount[userId] > 0)
+    .map((userId) => {
+      const dailyPercents = week.map((d) => percentFor(userId, d));
       const weeklyAvg = Math.round(
         dailyPercents.reduce((a, b) => a + b, 0) / week.length
       );
-      const name = nameById[uid] ?? "Anonymous";
+      const name = nameById[userId] ?? "Anonymous";
       return {
+        uid: opaqueUid(userId),
         name,
         initials: initialsOf(name),
         weeklyAvg,
-        streak: streakFor(uid),
-        isMe: uid === myId,
+        streak: streakFor(userId),
+        isMe: userId === myId,
       };
     });
 
