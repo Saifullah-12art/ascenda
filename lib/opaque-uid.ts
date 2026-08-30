@@ -35,16 +35,42 @@ import { createHash } from "node:crypto";
  * and find that user's row. What it still cannot do: learn the UUID behind any
  * other row on the board. That is exactly the boundary PR #7 drew.
  *
- * Changing UID_SALT rotates every identifier at once and breaks correlation
- * until clients ship the new value — treat it as a versioned constant, and
- * bump the `v1` suffix deliberately if it ever needs to change.
+ * ## Configuration
  *
- * MUST stay byte-identical to `src/lib/opaqueUid.ts` in the ascenda-mobile
- * repo, input format included.
+ * The constant comes from ASCENDA_UID_SALT, read on the server only — it is
+ * deliberately NOT a NEXT_PUBLIC_ variable, so it never reaches this app's own
+ * browser bundle, which has no use for it.
+ *
+ * Server-only here does NOT mean secret. The mobile app hardcodes the same
+ * string and must produce the same digest, so ASCENDA_UID_SALT has to be set to
+ * exactly the value in `src/lib/opaqueUid.ts` in the ascenda-mobile repo —
+ * currently `ascenda:uid:v1`. Setting it to a fresh random value, the usual
+ * instinct for anything called a salt, does not harden this: it silently
+ * empties every client-side join (feed streaks, league roster) until a matching
+ * mobile build ships. Rotating it is a coordinated release across both repos,
+ * hence the `v1` suffix.
+ *
+ * Unset is treated as fatal rather than defaulted, because a wrong-but-present
+ * value and a missing one both fail silently everywhere else.
  */
-export const UID_SALT = "ascenda:uid:v1";
+function uidSalt(): string {
+  const salt = process.env.ASCENDA_UID_SALT;
+  if (!salt) {
+    throw new Error(
+      "ASCENDA_UID_SALT is not set. /api/leaderboard cannot mint opaque user " +
+        "ids without it. Set it in the Vercel project (all environments) and in " +
+        ".env.local, to the same value the mobile app ships in " +
+        "src/lib/opaqueUid.ts — currently `ascenda:uid:v1`. It is not a secret; " +
+        "a random value will silently break the app's streak and roster joins."
+    );
+  }
+  return salt;
+}
 
-/** Opaque, stable id for a raw auth UUID. 64 lowercase hex characters. */
+/**
+ * Opaque, stable id for a raw auth UUID. 64 lowercase hex characters.
+ * Throws if ASCENDA_UID_SALT is unset — see above.
+ */
 export function opaqueUid(userId: string): string {
-  return createHash("sha256").update(`${UID_SALT}:${userId}`).digest("hex");
+  return createHash("sha256").update(`${uidSalt()}:${userId}`).digest("hex");
 }
