@@ -141,14 +141,14 @@ export default function LeaguesPage() {
 
   return (
     <>
-      <main className="flex min-h-screen justify-center bg-white px-6 pt-10 pb-28">
+      <main className="flex min-h-screen justify-center bg-page px-6 pt-10 pb-28">
         <div className="w-full max-w-[400px]">
           {/* Header */}
-          <h1 className="text-[17px] font-medium text-gray-900">Leagues</h1>
+          <h1 className="text-[17px] font-medium text-ink">Leagues</h1>
 
           {/* Create a league */}
           <section className="mt-8">
-            <p className="text-[11px] uppercase tracking-wide text-gray-400">
+            <p className="text-[11px] uppercase tracking-wide text-ink-muted">
               Create a league
             </p>
             <div className="mt-4 flex gap-2">
@@ -156,13 +156,13 @@ export default function LeaguesPage() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="League name"
-                className="flex-1 rounded-xl border-[0.5px] border-gray-200 bg-white px-4 py-3 text-[13px] text-gray-800 placeholder:text-gray-400 focus:border-[#534AB7] focus:outline-none"
+                className="flex-1 rounded-xl border border-line bg-card px-4 py-3 text-[13px] text-ink placeholder:text-ink-muted focus:border-purple focus:outline-none"
               />
               <button
                 type="button"
                 onClick={handleCreate}
                 disabled={!name.trim() || creating}
-                className="shrink-0 rounded-xl bg-[#534AB7] px-4 py-3 text-[13px] font-medium text-white transition enabled:hover:opacity-90 enabled:active:scale-[0.98] disabled:opacity-50"
+                className="shrink-0 rounded-xl bg-purple px-4 py-3 text-[13px] font-medium text-white transition enabled:hover:opacity-90 enabled:active:scale-[0.98] disabled:opacity-50"
               >
                 {creating ? "…" : "Create"}
               </button>
@@ -171,7 +171,7 @@ export default function LeaguesPage() {
 
           {/* Join a league */}
           <section className="mt-8">
-            <p className="text-[11px] uppercase tracking-wide text-gray-400">
+            <p className="text-[11px] uppercase tracking-wide text-ink-muted">
               Join a league
             </p>
             <div className="mt-4 flex gap-2">
@@ -182,31 +182,31 @@ export default function LeaguesPage() {
                   if (joinError) setJoinError(null);
                 }}
                 placeholder="Invite code"
-                className="flex-1 rounded-xl border-[0.5px] border-gray-200 bg-white px-4 py-3 text-[13px] text-gray-800 placeholder:text-gray-400 focus:border-[#534AB7] focus:outline-none"
+                className="flex-1 rounded-xl border border-line bg-card px-4 py-3 text-[13px] text-ink placeholder:text-ink-muted focus:border-purple focus:outline-none"
               />
               <button
                 type="button"
                 onClick={handleJoin}
                 disabled={!code.trim() || joining}
-                className="shrink-0 rounded-xl bg-[#534AB7] px-4 py-3 text-[13px] font-medium text-white transition enabled:hover:opacity-90 enabled:active:scale-[0.98] disabled:opacity-50"
+                className="shrink-0 rounded-xl bg-purple px-4 py-3 text-[13px] font-medium text-white transition enabled:hover:opacity-90 enabled:active:scale-[0.98] disabled:opacity-50"
               >
                 {joining ? "…" : "Join"}
               </button>
             </div>
             {joinError && (
-              <p className="mt-2 text-[11px] text-red-500">{joinError}</p>
+              <p className="mt-2 text-[11px] text-danger">{joinError}</p>
             )}
           </section>
 
           {/* Your leagues */}
           <section className="mt-10">
-            <p className="text-[11px] uppercase tracking-wide text-gray-400">
+            <p className="text-[11px] uppercase tracking-wide text-ink-muted">
               Your leagues
             </p>
 
             {leagues.length === 0 ? (
               // Empty state
-              <p className="mt-6 text-center text-[13px] text-gray-500">
+              <p className="mt-6 text-center text-[13px] text-ink-2">
                 You&apos;re not in any leagues yet. Create one or join with a code.
               </p>
             ) : (
@@ -215,20 +215,20 @@ export default function LeaguesPage() {
                   <Link
                     key={league.id}
                     href={`/leagues/${league.id}`}
-                    className="block rounded-xl border-[0.5px] border-gray-200 bg-white px-4 py-3 transition hover:border-gray-300 active:scale-[0.98]"
+                    className="block rounded-card border border-line bg-card px-4 py-3 transition hover:border-line-purple active:scale-[0.98]"
                   >
                     {/* Name + member count */}
-                    <p className="text-[14px] font-medium text-gray-900">
+                    <p className="text-[14px] font-medium text-ink">
                       {league.name}
                     </p>
-                    <p className="mt-0.5 text-[11px] text-gray-400">
+                    <p className="mt-0.5 text-[11px] text-ink-muted">
                       {league.memberCount}{" "}
                       {league.memberCount === 1 ? "member" : "members"}
                     </p>
 
                     {/* Invite code + copy */}
-                    <div className="mt-3 flex items-center justify-between rounded-lg bg-[#EEEDFE] px-3 py-2">
-                      <span className="text-[11px] font-medium tracking-wide text-[#534AB7]">
+                    <div className="mt-3 flex items-center justify-between rounded-lg bg-raised px-3 py-2">
+                      <span className="text-[11px] font-medium tracking-wide text-purple-soft">
                         {league.invite_code}
                       </span>
                       <button
@@ -238,7 +238,7 @@ export default function LeaguesPage() {
                           e.preventDefault();
                           handleCopy(league);
                         }}
-                        className="text-[11px] font-medium text-[#534AB7]"
+                        className="text-[11px] font-medium text-purple-soft"
                       >
                         {copiedId === league.id ? "Copied" : "Copy"}
                       </button>

@@ -141,35 +141,35 @@ export default function LeagueDetailPage() {
 
   return (
     <>
-      <main className="flex min-h-screen justify-center bg-white px-6 pt-10 pb-28">
+      <main className="flex min-h-screen justify-center bg-page px-6 pt-10 pb-28">
         <div className="w-full max-w-[400px]">
           {/* Back link */}
-          <Link href="/leagues" className="text-[13px] text-[#534AB7]">
+          <Link href="/leagues" className="text-[13px] text-purple-soft">
             ← Leagues
           </Link>
 
           {/* Header: league name, muted member count, and the invite code chip */}
-          <h1 className="mt-4 text-[18px] font-medium text-gray-900">
+          <h1 className="mt-4 text-[18px] font-medium text-ink">
             {league.name}
           </h1>
-          <p className="mt-0.5 text-[11px] text-gray-400">
+          <p className="mt-0.5 text-[11px] text-ink-muted">
             {members.length} {members.length === 1 ? "member" : "members"}
           </p>
 
-          {/* Invite code in a light-purple chip with the Copy button */}
-          <div className="mt-4 flex items-center justify-between rounded-2xl bg-[#EEEDFE] px-4 py-3">
+          {/* Invite code on a card, with the Copy button on a raised chip */}
+          <div className="mt-4 flex items-center justify-between rounded-card border border-line bg-card px-4 py-3">
             <div className="min-w-0">
-              <p className="text-[10px] uppercase tracking-wide text-[#534AB7]/60">
+              <p className="text-[10px] uppercase tracking-wide text-ink-muted">
                 Invite code
               </p>
-              <p className="mt-0.5 text-[14px] font-medium tracking-wide text-[#534AB7]">
+              <p className="mt-0.5 text-[14px] font-medium tracking-wide text-purple-soft">
                 {league.invite_code}
               </p>
             </div>
             <button
               type="button"
               onClick={handleCopy}
-              className="shrink-0 rounded-full bg-white px-3 py-1.5 text-[12px] font-medium text-[#534AB7] transition active:scale-95"
+              className="shrink-0 rounded-full bg-raised px-3 py-1.5 text-[12px] font-medium text-purple-soft transition active:scale-95"
             >
               {copied ? "Copied" : "Copy"}
             </button>
@@ -177,19 +177,19 @@ export default function LeagueDetailPage() {
 
           {/* Members — first-initial avatar tiles in a small grid */}
           <section className="mt-8">
-            <p className="text-[11px] uppercase tracking-wide text-gray-400">
+            <p className="text-[11px] uppercase tracking-wide text-ink-muted">
               Members
             </p>
             <div className="mt-4 grid grid-cols-2 gap-2">
               {members.map((member) => (
                 <div
                   key={member.user_id}
-                  className="flex items-center gap-3 rounded-2xl bg-[#EEEDFE]/40 px-3 py-2.5"
+                  className="flex items-center gap-3 rounded-2xl border border-line bg-card px-3 py-2.5"
                 >
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#EEEDFE] text-[13px] font-medium text-[#534AB7]">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-tint-purple text-[13px] font-medium text-purple-soft">
                     {firstInitial(member.member_name)}
                   </span>
-                  <span className="truncate text-[13px] text-gray-900">
+                  <span className="truncate text-[13px] text-ink">
                     {member.member_name}
                   </span>
                 </div>
@@ -199,13 +199,13 @@ export default function LeagueDetailPage() {
 
           {/* League feed: posts from this league's members only */}
           <section className="mt-10">
-            <p className="text-[11px] uppercase tracking-wide text-gray-400">
+            <p className="text-[11px] uppercase tracking-wide text-ink-muted">
               League feed
             </p>
 
             {posts.length === 0 ? (
               // Empty state
-              <p className="mt-6 text-center text-[13px] text-gray-500">
+              <p className="mt-6 text-center text-[13px] text-ink-2">
                 No one in this league has posted yet.
               </p>
             ) : (
@@ -214,20 +214,20 @@ export default function LeagueDetailPage() {
                 {posts.map((post) => (
                   <article
                     key={post.id}
-                    className="flex gap-3 rounded-2xl bg-[#EEEDFE]/40 px-4 py-4"
+                    className="flex gap-3 rounded-card border border-line bg-card px-4 py-4"
                   >
                     {/* First-initial avatar tile */}
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#EEEDFE] text-[13px] font-medium text-[#534AB7]">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-tint-purple text-[13px] font-medium text-purple-soft">
                       {firstInitial(post.author_name)}
                     </span>
 
                     <div className="min-w-0 flex-1">
                       {/* Author + relative time */}
                       <div className="flex items-center justify-between gap-2">
-                        <span className="truncate text-[13px] font-medium text-gray-900">
+                        <span className="truncate text-[13px] font-medium text-ink">
                           {post.author_name}
                         </span>
-                        <span className="shrink-0 text-[10px] text-gray-400">
+                        <span className="shrink-0 text-[10px] text-ink-muted">
                           {relativeTime(post.created_at)}
                         </span>
                       </div>
@@ -241,13 +241,13 @@ export default function LeagueDetailPage() {
                         >
                           ✅
                         </span>
-                        <span className="text-[13px] text-gray-800">
+                        <span className="text-[13px] text-ink">
                           {post.task_did}
                         </span>
                       </div>
 
                       {/* Motivation */}
-                      <p className="mt-1.5 text-[12px] leading-relaxed text-gray-500">
+                      <p className="mt-1.5 text-[12px] leading-relaxed text-ink-2">
                         {post.motivation}
                       </p>
                     </div>
