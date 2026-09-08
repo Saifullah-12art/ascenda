@@ -172,35 +172,35 @@ export default function OnboardingPage() {
 
   // Hold the layout still while we verify auth / onboarding status.
   if (checking) {
-    return <main className="min-h-screen bg-[#FAFAFB]" />;
+    return <main className="min-h-screen bg-page" />;
   }
 
   return (
-    <main className="flex min-h-screen justify-center bg-[#FAFAFB] px-6 py-10">
+    <main className="flex min-h-screen justify-center bg-page px-6 py-10">
       <div className="w-full max-w-[360px]">
         {/* Wordmark */}
-        <h1 className="text-center text-[20px] font-medium text-[#534AB7]">
+        <h1 className="text-center text-[20px] font-medium text-purple-soft">
           Ascenda
         </h1>
 
         {/* Progress */}
         <div className="mt-8">
-          <div className="mb-1.5 flex justify-between text-[11px] text-gray-400">
+          <div className="mb-1.5 flex justify-between text-[11px] text-ink-muted">
             <span>
               Step {step + 1} of {TOTAL}
             </span>
             <span>{progress}%</span>
           </div>
-          <div className="h-1 w-full rounded-full bg-[#EEEDFE]">
+          <div className="h-1 w-full rounded-full bg-tint-track">
             <div
-              className="h-1 rounded-full bg-[#534AB7] transition-all"
+              className="h-1 rounded-full bg-purple transition-all"
               style={{ width: `${progress}%` }}
             />
           </div>
         </div>
 
         {/* Question */}
-        <h2 className="mt-8 text-[15px] font-medium text-gray-900">
+        <h2 className="mt-8 text-[15px] font-medium text-ink">
           {question.title}
         </h2>
 
@@ -213,10 +213,10 @@ export default function OnboardingPage() {
                 key={option}
                 type="button"
                 onClick={() => select(option)}
-                className={`flex items-center justify-between rounded-xl px-4 py-3 text-left text-[13px] transition active:scale-[0.98] ${
+                className={`flex items-center justify-between rounded-xl border-[1.5px] px-4 py-3 text-left text-[13px] transition active:scale-[0.98] ${
                   isSelected
-                    ? "border-[1.5px] border-[#534AB7] bg-[#EEEDFE] text-[#534AB7]"
-                    : "border-[0.5px] border-gray-200 bg-white text-gray-800"
+                    ? "border-line-purple bg-soft-purple text-ink"
+                    : "border-line bg-card text-ink"
                 }`}
               >
                 <span>{option}</span>
@@ -227,8 +227,9 @@ export default function OnboardingPage() {
                     height="16"
                     viewBox="0 0 24 24"
                     fill="none"
-                    stroke="#534AB7"
+                    stroke="currentColor"
                     strokeWidth="2.5"
+                    className="shrink-0 text-purple-bright"
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     aria-hidden="true"
@@ -242,7 +243,7 @@ export default function OnboardingPage() {
         </div>
 
         {/* Error message */}
-        {error && <p className="mt-4 text-[11px] text-red-500">{error}</p>}
+        {error && <p className="mt-4 text-[11px] text-danger">{error}</p>}
 
         {/* Actions */}
         <div className="mt-8 flex flex-col gap-2">
@@ -250,7 +251,7 @@ export default function OnboardingPage() {
             type="button"
             onClick={handleContinue}
             disabled={!selected || saving || building}
-            className="rounded-xl bg-[#534AB7] px-4 py-3 text-[13px] font-medium text-white transition enabled:hover:opacity-90 enabled:active:scale-[0.98] disabled:opacity-50"
+            className="rounded-xl bg-gradient-primary px-4 py-3 text-[13px] font-medium text-white shadow-glow transition enabled:hover:opacity-90 enabled:active:scale-[0.98] disabled:opacity-50 disabled:shadow-none"
           >
             {building
               ? "Building your routine…"
@@ -267,7 +268,7 @@ export default function OnboardingPage() {
               type="button"
               onClick={goBack}
               disabled={saving || building}
-              className="text-[11px] text-gray-400 disabled:opacity-50"
+              className="text-[11px] text-ink-muted disabled:opacity-50"
             >
               Back
             </button>

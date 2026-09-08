@@ -61,22 +61,22 @@ export default function SignInPage() {
 
   // Hold the layout still while we check for an existing session.
   if (checking) {
-    return <main className="min-h-screen bg-[#EEEDFE]" />;
+    return <main className="min-h-screen bg-page" />;
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#EEEDFE] px-6">
+    <main className="flex min-h-screen items-center justify-center bg-page px-6">
       <div className="w-full max-w-xs">
         {/* Header */}
         <div className="mb-8 text-center">
-          <h1 className="text-[20px] font-medium text-[#534AB7]">Ascenda</h1>
-          <p className="mt-1 text-[11px] text-gray-400">Rise every day.</p>
+          <h1 className="text-[20px] font-medium text-purple-soft">Ascenda</h1>
+          <p className="mt-1 text-[11px] text-ink-muted">Rise every day.</p>
         </div>
 
         <form onSubmit={handleSignIn} className="flex flex-col gap-3">
           {/* Email */}
           <div className="flex flex-col gap-1">
-            <label htmlFor="email" className="text-[11px] text-gray-500">
+            <label htmlFor="email" className="text-[11px] text-ink-2">
               Email
             </label>
             <input
@@ -85,13 +85,13 @@ export default function SignInPage() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="rounded-md border border-gray-200 bg-white px-3 py-2 text-[13px] text-gray-800 outline-none focus:border-[#534AB7]"
+              className="rounded-md border border-line bg-card px-3 py-2 text-[13px] text-ink outline-none placeholder:text-ink-muted focus:border-purple"
             />
           </div>
 
           {/* Password */}
           <div className="flex flex-col gap-1">
-            <label htmlFor="password" className="text-[11px] text-gray-500">
+            <label htmlFor="password" className="text-[11px] text-ink-2">
               Password
             </label>
             <input
@@ -100,18 +100,18 @@ export default function SignInPage() {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="rounded-md border border-gray-200 bg-white px-3 py-2 text-[13px] text-gray-800 outline-none focus:border-[#534AB7]"
+              className="rounded-md border border-line bg-card px-3 py-2 text-[13px] text-ink outline-none placeholder:text-ink-muted focus:border-purple"
             />
           </div>
 
           {/* Error message */}
-          {error && <p className="text-[11px] text-red-500">{error}</p>}
+          {error && <p className="text-[11px] text-danger">{error}</p>}
 
           {/* Primary action */}
           <button
             type="submit"
             disabled={loading}
-            className="mt-1 rounded-md bg-[#534AB7] px-3 py-2 text-[13px] font-medium text-white transition enabled:hover:opacity-90 enabled:active:scale-[0.98] disabled:opacity-60"
+            className="mt-1 rounded-md bg-gradient-primary px-3 py-2 text-[13px] font-medium text-white shadow-glow transition enabled:hover:opacity-90 enabled:active:scale-[0.98] disabled:opacity-60 disabled:shadow-none"
           >
             {loading ? "Signing in…" : "Sign in"}
           </button>
@@ -119,7 +119,7 @@ export default function SignInPage() {
           {/* Secondary action */}
           <Link
             href="/signup"
-            className="rounded-md border border-[#534AB7] px-3 py-2 text-center text-[13px] font-medium text-[#534AB7]"
+            className="rounded-md border border-line-purple px-3 py-2 text-center text-[13px] font-medium text-purple-soft transition hover:bg-soft-purple"
           >
             Create account instead
           </Link>
