@@ -2,22 +2,72 @@
 @tailwind components;
 @tailwind utilities;
 
+/* The dark theme's tokens, mirroring ascenda-mobile/src/theme/dark.ts. These
+   are consumed through the semantic color names in tailwind.config.ts —
+   `bg-card`, `text-ink-2`, `border-line` — not read directly. See lib/theme.ts
+   for what each one is for, and for the rule about when purple is allowed.
+
+   The app is dark-only: mobile deleted its light tokens outright, and there is
+   no theme toggle in the product. So these live on a bare `:root` with no
+   `prefers-color-scheme` branch — a light branch would only be a second palette
+   nobody ships. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* surfaces */
+  --bg-page: #070b16;
+  --bg-secondary: #0b1020;
+  --bg-card: #101625;
+  --bg-raised: #151b2c;
+  --bg-soft-purple: #191630;
+  --bg-nav: #090e1a;
+
+  /* purple */
+  --purple: #7048ff;
+  --purple-bright: #8b5cff;
+  --purple-soft: #a78bfa;
+  --purple-deep: #4b2bce;
+  --purple-glow: rgba(112, 72, 255, 0.28);
+
+  /* text */
+  --ink: #f7f8fc;
+  --ink-2: #a1a8ba;
+  --ink-muted: #70788d;
+  --ink-nav: #858da1;
+
+  /* borders */
+  --line: #242b3d;
+  --line-purple: #6040e8;
+  --line-nav: #1b2231;
+
+  /* semantic */
+  --success: #24d17e;
+  --warning: #ffb020;
+  --danger: #ff4965;
+  --danger-muted: #e8536b;
+
+  /* translucent tints for tiles and chips on a dark card */
+  --tint-purple: rgba(112, 72, 255, 0.16);
+  --tint-success: rgba(36, 209, 126, 0.14);
+  --tint-warning: rgba(255, 176, 32, 0.14);
+  --tint-danger: rgba(255, 73, 101, 0.14);
+  --tint-track: rgba(255, 255, 255, 0.06);
+
+  /* Renders form controls, scrollbars and the caret in their dark variants. */
+  color-scheme: dark;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* `html` carries the page color too, so overscroll past the top or bottom of a
+   screen shows the app canvas rather than the browser's white. */
+html {
+  background: var(--bg-page);
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg-page);
+  color: var(--ink);
+  /* layout.tsx loads Geist and exposes it as --font-geist-sans; this rule used
+     to hardcode Arial, so the variable was defined and never used and the whole
+     app rendered in Arial. */
+  font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
 }
 
 @layer utilities {

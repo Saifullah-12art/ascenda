@@ -12,7 +12,8 @@ const TABS = [
   { href: "/profile", label: "Profile", match: "/profile" },
 ] as const;
 
-// Each tab's icon, keyed by href. Inherits color via `currentColor`.
+// Each tab's icon, keyed by href. Inherits color via `currentColor`, so the
+// active/resting tint is set once on the Link below.
 function TabIcon({ href }: { href: string }) {
   const common = {
     width: 22,
@@ -77,7 +78,7 @@ export default function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 border-t-[0.5px] border-gray-200 bg-white">
+    <nav className="fixed inset-x-0 bottom-0 border-t-[0.5px] border-line-nav bg-nav">
       {/* Center the tab content to match the app's ~400px column on wide screens */}
       <div className="mx-auto flex max-w-[400px] items-stretch justify-around">
         {TABS.map((tab) => {
@@ -89,11 +90,11 @@ export default function BottomNav() {
               key={tab.href}
               href={tab.href}
               className={`flex flex-1 flex-col items-center gap-1 py-2.5 ${
-                active ? "text-[#534AB7]" : "text-gray-400"
+                active ? "text-purple-bright" : "text-ink-nav"
               }`}
             >
               <TabIcon href={tab.href} />
-              <span className="text-[10px] font-medium">{tab.label}</span>
+              <span className="text-[10px] font-semibold">{tab.label}</span>
             </Link>
           );
         })}
