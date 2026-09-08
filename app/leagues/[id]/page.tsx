@@ -17,7 +17,12 @@ type League = {
 // A member of this league.
 type Member = {
   user_id: string;
-  member_name: string;
+  // Nullable. create_league and join_league copy the joiner's
+  // profiles.full_name into this column, and neither falls back when that name
+  // is null — unlike posts_set_author_name (0003), which coalesces to
+  // 'Anonymous'. So a user who joins a league before setting a name writes a
+  // null here, and that is still true today, not only for legacy rows.
+  member_name: string | null;
 };
 
 // A post row as stored in `posts` (the fields the feed renders).
@@ -31,9 +36,21 @@ type Post = {
 
 // First initial of a name for the avatar tiles, e.g. "Jane Doe" -> "J".
 // Matches the single-letter avatars on the profile and leaderboard screens.
-function firstInitial(name: string): string {
-  const trimmed = name.trim();
+// Tolerates a null or blank name (see Member.member_name) rather than throwing
+// on .trim(), falling back to the same "?" as a blank name. A single null took
+// the whole screen down: this runs inside the members map, so the TypeError
+// escaped render and blanked the page to an error boundary rather than
+// degrading one avatar.
+function firstInitial(name: string | null): string {
+  const trimmed = (name ?? "").trim();
   return trimmed ? trimmed.charAt(0).toUpperCase() : "?";
+}
+
+// The display name for a member or a post author. Same nullable-column caveat
+// as firstInitial(): a row with no name renders as "Anonymous", matching what
+// the posts insert trigger stores for a profile with no full_name.
+function displayName(name: string | null): string {
+  return (name ?? "").trim() || "Anonymous";
 }
 
 // Compact relative time from an ISO timestamp: "just now", "3h ago", "2d ago".
@@ -190,7 +207,7 @@ export default function LeagueDetailPage() {
                     {firstInitial(member.member_name)}
                   </span>
                   <span className="truncate text-[13px] text-ink">
-                    {member.member_name}
+                    {displayName(member.member_name)}
                   </span>
                 </div>
               ))}
