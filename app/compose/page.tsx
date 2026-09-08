@@ -147,15 +147,15 @@ export default function ComposePage() {
 
   // Hold the layout still while loading.
   if (loading) {
-    return <main className="min-h-screen bg-white" />;
+    return <main className="min-h-screen bg-page" />;
   }
 
   // Shared this session — confirmation.
   if (shared) {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center bg-white px-6">
-        <p className="text-[17px] font-medium text-gray-900">Shared! ✓</p>
-        <Link href="/today" className="mt-4 text-[13px] text-[#534AB7]">
+      <main className="flex min-h-screen flex-col items-center justify-center bg-page px-6">
+        <p className="text-[17px] font-medium text-ink">Shared! ✓</p>
+        <Link href="/today" className="mt-4 text-[13px] text-purple-soft">
           Back to today
         </Link>
       </main>
@@ -165,11 +165,11 @@ export default function ComposePage() {
   // Already posted today (on load, or hit the unique conflict on submit).
   if (alreadyPosted) {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center bg-white px-6">
-        <p className="text-[17px] font-medium text-gray-900">
+      <main className="flex min-h-screen flex-col items-center justify-center bg-page px-6">
+        <p className="text-[17px] font-medium text-ink">
           You&apos;ve shared today ✓
         </p>
-        <Link href="/today" className="mt-4 text-[13px] text-[#534AB7]">
+        <Link href="/today" className="mt-4 text-[13px] text-purple-soft">
           Back to today
         </Link>
       </main>
@@ -179,11 +179,11 @@ export default function ComposePage() {
   // Nothing completed yet — nothing to share.
   if (completedTasks.length === 0) {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center bg-white px-6 text-center">
-        <p className="text-[13px] text-gray-500">
+      <main className="flex min-h-screen flex-col items-center justify-center bg-page px-6 text-center">
+        <p className="text-[13px] text-ink-2">
           Finish a task first, then come back to share it
         </p>
-        <Link href="/today" className="mt-4 text-[13px] text-[#534AB7]">
+        <Link href="/today" className="mt-4 text-[13px] text-purple-soft">
           Go to today
         </Link>
       </main>
@@ -192,14 +192,14 @@ export default function ComposePage() {
 
   // The form.
   return (
-    <main className="flex min-h-screen justify-center bg-white px-6 pt-10 pb-16">
+    <main className="flex min-h-screen justify-center bg-page px-6 pt-10 pb-16">
       <div className="w-full max-w-[380px]">
         {/* Header */}
-        <p className="text-[11px] text-gray-400">{formatHeaderDate()}</p>
-        <h1 className="mt-1 text-[17px] font-medium text-gray-900">Today&apos;s post</h1>
+        <p className="text-[11px] text-ink-muted">{formatHeaderDate()}</p>
+        <h1 className="mt-1 text-[17px] font-medium text-ink">Today&apos;s post</h1>
 
         {/* Task picker — single-select cards, same style as onboarding. */}
-        <p className="mt-8 text-[11px] uppercase tracking-wide text-gray-400">
+        <p className="mt-8 text-[11px] uppercase tracking-wide text-ink-muted">
           What did you do today?
         </p>
         <div className="mt-4 flex flex-col gap-3">
@@ -210,10 +210,10 @@ export default function ComposePage() {
                 key={task.id}
                 type="button"
                 onClick={() => setSelectedTaskId(task.id)}
-                className={`flex items-center justify-between rounded-xl px-4 py-3 text-left text-[13px] transition-colors ${
+                className={`flex items-center justify-between rounded-xl border-[1.5px] px-4 py-3 text-left text-[13px] transition-colors ${
                   isSelected
-                    ? "border-[1.5px] border-[#534AB7] bg-[#EEEDFE] text-[#534AB7]"
-                    : "border-[0.5px] border-gray-200 bg-white text-gray-800"
+                    ? "border-line-purple bg-soft-purple text-ink"
+                    : "border-line bg-card text-ink"
                 }`}
               >
                 <span>{task.name}</span>
@@ -224,8 +224,9 @@ export default function ComposePage() {
                     height="16"
                     viewBox="0 0 24 24"
                     fill="none"
-                    stroke="#534AB7"
+                    stroke="currentColor"
                     strokeWidth="2.5"
+                    className="shrink-0 text-purple-soft"
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     aria-hidden="true"
@@ -239,7 +240,7 @@ export default function ComposePage() {
         </div>
 
         {/* Motivation */}
-        <p className="mt-8 text-[11px] uppercase tracking-wide text-gray-400">
+        <p className="mt-8 text-[11px] uppercase tracking-wide text-ink-muted">
           What pushed you to do it?
         </p>
         <textarea
@@ -247,17 +248,17 @@ export default function ComposePage() {
           onChange={(e) => setMotivation(e.target.value)}
           rows={4}
           placeholder="Share what kept you going…"
-          className="mt-4 w-full resize-none rounded-xl border-[0.5px] border-gray-200 bg-white px-4 py-3 text-[13px] text-gray-800 placeholder:text-gray-400 focus:border-[#534AB7] focus:outline-none"
+          className="mt-4 w-full resize-none rounded-xl border border-line bg-card px-4 py-3 text-[13px] text-ink placeholder:text-ink-muted focus:border-purple focus:outline-none"
         />
 
-        {error && <p className="mt-4 text-[11px] text-red-500">{error}</p>}
+        {error && <p className="mt-4 text-[11px] text-danger">{error}</p>}
 
         {/* Post */}
         <button
           type="button"
           onClick={handleSubmit}
           disabled={!canSubmit}
-          className="mt-8 w-full rounded-xl bg-[#534AB7] px-4 py-3 text-[13px] font-medium text-white transition enabled:hover:opacity-90 enabled:active:scale-[0.98] disabled:opacity-50"
+          className="mt-8 w-full rounded-xl bg-gradient-primary px-4 py-3 text-[13px] font-medium text-white shadow-glow transition enabled:hover:opacity-90 enabled:active:scale-[0.98] disabled:opacity-50 disabled:shadow-none"
         >
           {submitting ? "Posting…" : "Post"}
         </button>

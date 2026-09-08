@@ -81,41 +81,47 @@ export default function FeedPage() {
 
   return (
     <>
-      <main className="flex min-h-screen justify-center bg-white px-6 pt-10 pb-28">
+      <main className="flex min-h-screen justify-center bg-page px-6 pt-10 pb-28">
         <div className="w-full max-w-[400px]">
           {/* Header */}
-          <h1 className="text-[17px] font-medium text-gray-900">Feed</h1>
+          <h1 className="text-[17px] font-medium text-ink">Feed</h1>
 
           {/* Share CTA */}
           <Link
             href="/compose"
-            className="mt-4 block w-full rounded-xl bg-[#534AB7] px-4 py-3 text-center text-[13px] font-medium text-white transition hover:opacity-90 active:scale-[0.98]"
+            className="mt-4 block w-full rounded-xl bg-gradient-primary px-4 py-3 text-center text-[13px] font-medium text-white shadow-glow transition hover:opacity-90 active:scale-[0.98]"
           >
             Share today&apos;s win
           </Link>
 
           {/* Empty state */}
           {posts.length === 0 ? (
-            <p className="mt-16 text-center text-[13px] text-gray-500">
+            <p className="mt-16 text-center text-[13px] text-ink-2">
               No posts yet — be the first to share.
             </p>
           ) : (
-            // Posts, newest first, with subtle separators between them.
-            <div className="mt-6 flex flex-col divide-y-[0.5px] divide-gray-200">
+            // Posts, newest first. Each is its own card, edged in `line` —
+            // the divider that used to separate them was a 0.5px gray hairline,
+            // which all but disappears on a near-black page. Mobile's
+            // WinPostCard made the same move for the same reason.
+            <div className="mt-6 flex flex-col gap-3">
               {posts.map((post) => (
-                <article key={post.id} className="flex gap-3 py-5">
+                <article
+                  key={post.id}
+                  className="flex gap-3 rounded-card border border-line bg-card p-4"
+                >
                   {/* Avatar with the author's initials */}
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#EEEDFE] text-[11px] font-medium text-[#534AB7]">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-tint-purple text-[11px] font-medium text-purple-soft">
                     {initials(post.author_name)}
                   </span>
 
                   <div className="min-w-0 flex-1">
                     {/* Author + relative time */}
                     <div className="flex items-center justify-between gap-2">
-                      <span className="truncate text-[13px] font-medium text-gray-900">
+                      <span className="truncate text-[13px] font-medium text-ink">
                         {post.author_name}
                       </span>
-                      <span className="shrink-0 text-[10px] text-gray-400">
+                      <span className="shrink-0 text-[10px] text-ink-muted">
                         {relativeTime(post.created_at)}
                       </span>
                     </div>
@@ -127,21 +133,22 @@ export default function FeedPage() {
                         height="13"
                         viewBox="0 0 24 24"
                         fill="none"
-                        stroke="#1D9E75"
+                        stroke="currentColor"
                         strokeWidth="3"
+                        className="shrink-0 text-success"
                         strokeLinecap="round"
                         strokeLinejoin="round"
                         aria-hidden="true"
                       >
                         <polyline points="20 6 9 17 4 12" />
                       </svg>
-                      <span className="text-[13px] text-gray-800">
+                      <span className="text-[13px] text-ink">
                         {post.task_did}
                       </span>
                     </div>
 
                     {/* Motivation */}
-                    <p className="mt-1.5 text-[12px] leading-relaxed text-gray-500">
+                    <p className="mt-1.5 text-[12px] leading-relaxed text-ink-2">
                       {post.motivation}
                     </p>
                   </div>
