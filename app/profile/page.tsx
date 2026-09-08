@@ -193,66 +193,67 @@ export default function ProfilePage() {
 
   return (
     <>
-    <main className="flex min-h-screen justify-center bg-white px-6 pt-10 pb-28">
+    <main className="flex min-h-screen justify-center bg-page px-6 pt-10 pb-28">
       <div className="flex w-full max-w-[380px] flex-col">
         {/* Identity */}
         <div className="flex flex-col items-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#EEEDFE] text-[20px] font-medium text-[#534AB7]">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-tint-purple text-[20px] font-medium text-purple-soft">
             {initials(profile?.full_name ?? null)}
           </div>
-          <h1 className="mt-3 text-[16px] font-medium text-gray-900">
+          <h1 className="mt-3 text-[16px] font-medium text-ink">
             {profile?.full_name ?? "You"}
           </h1>
           {memberSince && (
-            <p className="mt-0.5 text-[11px] text-gray-400">
+            <p className="mt-0.5 text-[11px] text-ink-muted">
               Member since {memberSince}
             </p>
           )}
         </div>
 
-        {/* Streak card */}
-        <div className="mt-8 flex items-center gap-3 rounded-2xl bg-[#E1F5EE] px-5 py-4">
-          {/* Flame — its own span with no text-color class, so the green
-              number color below can't recolor the emoji into a flat shape. */}
+        {/* Streak card — the screen's hero, and the only surface on it that
+            takes the gradient and the wider glow. */}
+        <div className="mt-8 flex items-center gap-3 rounded-hero border border-purple-glow bg-gradient-hero px-5 py-4 shadow-glow-hero">
+          {/* Flame — its own span with no text-color class, so the text color
+              below can't recolor the emoji into a flat shape. */}
           <span className="text-[28px] leading-none" aria-hidden="true">
             🔥
           </span>
           <div>
-            <p className="text-[24px] font-medium leading-none text-[#1D9E75]">
+            <p className="text-[24px] font-medium leading-none text-ink">
               {streak} {streak === 1 ? "day" : "days"}
             </p>
-            <p className="mt-1 text-[11px] text-[#1D9E75]/70">current streak</p>
+            <p className="mt-1 text-[11px] text-ink-2">current streak</p>
           </div>
         </div>
 
-        {/* Stat tiles — tinted, rounded, flat (matches the Today screen). */}
+        {/* Stat tiles — ordinary cards, separated by their hairline. */}
         <div className="mt-3 grid grid-cols-2 gap-3">
           {/* Best streak */}
-          <div className="rounded-2xl bg-[#EEEDFE] px-4 py-4">
+          <div className="rounded-panel border border-line bg-card px-4 py-4">
             <span className="text-[20px] leading-none" aria-hidden="true">
               🏆
             </span>
-            <p className="mt-2 text-[24px] font-medium leading-none text-[#534AB7]">
+            <p className="mt-2 text-[24px] font-medium leading-none text-ink">
               {bestStreak}
             </p>
-            <p className="mt-1 text-[11px] text-[#534AB7]/70">Best streak</p>
+            <p className="mt-1 text-[11px] text-ink-2">Best streak</p>
           </div>
 
           {/* Done this week */}
-          <div className="rounded-2xl bg-[#E1F5EE] px-4 py-4">
+          <div className="rounded-panel border border-line bg-card px-4 py-4">
             <span className="text-[20px] leading-none" aria-hidden="true">
               ✅
             </span>
-            <p className="mt-2 text-[24px] font-medium leading-none text-[#1D9E75]">
+            <p className="mt-2 text-[24px] font-medium leading-none text-ink">
               {doneThisWeek}
             </p>
-            <p className="mt-1 text-[11px] text-[#1D9E75]/70">Done this week</p>
+            <p className="mt-1 text-[11px] text-ink-2">Done this week</p>
           </div>
         </div>
 
         {/* Last 7 days bar chart */}
         <div className="mt-8">
-          <p className="text-[11px] uppercase tracking-wide text-gray-400">
+          <p className="text-[11px] uppercase tracking-wide text-ink-muted">
             Last 7 days
           </p>
           <div className="mt-4 flex items-end justify-between gap-2">
@@ -263,15 +264,15 @@ export default function ProfilePage() {
               return (
                 <div key={dateStr} className="flex flex-1 flex-col items-center">
                   {/* Bar track (fixed height) with a fill scaled to the % */}
-                  <div className="flex h-20 w-full items-end rounded-md bg-[#EEEDFE]">
+                  <div className="flex h-20 w-full items-end rounded-md bg-tint-track">
                     <div
                       className={`w-full rounded-md ${
-                        isToday ? "bg-[#9B95DC]" : "bg-[#534AB7]"
+                        isToday ? "bg-purple-bright" : "bg-purple"
                       }`}
                       style={{ height: `${pct}%` }}
                     />
                   </div>
-                  <span className="mt-2 text-[10px] text-gray-400">
+                  <span className="mt-2 text-[10px] text-ink-muted">
                     {weekdayLetter(d)}
                   </span>
                 </div>
@@ -284,7 +285,7 @@ export default function ProfilePage() {
         <button
           type="button"
           onClick={signOut}
-          className="mt-10 rounded-xl border-[0.5px] border-gray-200 px-4 py-3 text-[13px] font-medium text-gray-700"
+          className="mt-10 rounded-xl border border-line px-4 py-3 text-[13px] font-medium text-danger-muted transition hover:border-danger-muted"
         >
           Sign out
         </button>

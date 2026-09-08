@@ -59,15 +59,15 @@ export default function LeaderboardPage() {
 
   return (
     <>
-    <main className="flex min-h-screen justify-center bg-white px-6 pt-10 pb-28">
+    <main className="flex min-h-screen justify-center bg-page px-6 pt-10 pb-28">
       <div className="w-full max-w-[400px]">
         {/* Header */}
-        <h1 className="text-[18px] font-medium text-gray-900">Leaderboard</h1>
-        <p className="mt-0.5 text-[11px] text-gray-400">this week</p>
+        <h1 className="text-[18px] font-medium text-ink">Leaderboard</h1>
+        <p className="mt-0.5 text-[11px] text-ink-muted">this week</p>
 
         {/* Empty state */}
         {rows.length === 0 ? (
-          <p className="mt-16 text-center text-[13px] text-gray-500">
+          <p className="mt-16 text-center text-[13px] text-ink-2">
             No one on the board yet
           </p>
         ) : (
@@ -77,8 +77,10 @@ export default function LeaderboardPage() {
               return (
                 <div
                   key={row.rank}
-                  className={`flex items-center gap-3 rounded-2xl px-3 py-3 ${
-                    row.isMe ? "bg-[#EEEDFE] ring-1 ring-[#534AB7]/25" : "bg-white"
+                  className={`flex items-center gap-3 rounded-2xl border-[1.5px] px-3 py-3 ${
+                    row.isMe
+                      ? "border-line-purple bg-soft-purple"
+                      : "border-line bg-card"
                   }`}
                 >
                   {/* Rank — medal for the top three, number otherwise. */}
@@ -88,30 +90,30 @@ export default function LeaderboardPage() {
                         {medal}
                       </span>
                     ) : (
-                      <span className="text-[13px] font-medium text-gray-400">
+                      <span className="text-[13px] font-medium text-ink-muted">
                         {row.rank}
                       </span>
                     )}
                   </span>
 
                   {/* First-initial avatar — matches the profile avatar tile. */}
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#EEEDFE] text-[13px] font-medium text-[#534AB7]">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-tint-purple text-[13px] font-medium text-purple-soft">
                     {row.initials.charAt(0)}
                   </span>
 
                   {/* Name + weekly average */}
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-[13px] font-medium text-gray-900">
+                    <p className="truncate text-[13px] font-medium text-ink">
                       {row.name}
                     </p>
-                    <p className="text-[10px] text-gray-400">
+                    <p className="text-[10px] text-ink-muted">
                       {row.weeklyAvg}% this week
                     </p>
                   </div>
 
                   {/* Streak chip — 🔥 kept in its own span (no text-color class)
                       so the green count color can't recolor the emoji. */}
-                  <span className="flex shrink-0 items-center gap-1 rounded-full bg-[#E1F5EE] px-2.5 py-1 text-[12px] font-medium text-[#1D9E75]">
+                  <span className="flex shrink-0 items-center gap-1 rounded-full bg-tint-success px-2.5 py-1 text-[12px] font-medium text-success">
                     <span className="text-[12px] leading-none" aria-hidden="true">
                       🔥
                     </span>
@@ -124,8 +126,8 @@ export default function LeaderboardPage() {
         )}
 
         {/* Footer note */}
-        <div className="mt-8 rounded-2xl bg-[#EEEDFE] px-4 py-3">
-          <p className="text-[11px] text-[#534AB7]/70">
+        <div className="mt-8 rounded-2xl border border-line bg-card px-4 py-3">
+          <p className="text-[11px] text-ink-2">
             Your streak keeps your rank. Don&apos;t break it.
           </p>
         </div>
