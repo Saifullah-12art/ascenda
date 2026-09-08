@@ -276,25 +276,27 @@ function TodayView() {
 
   return (
     <>
-    <main className="flex min-h-screen justify-center bg-white px-6 pt-10 pb-28">
+    <main className="flex min-h-screen justify-center bg-page px-6 pt-10 pb-28">
       <div className="w-full max-w-[380px]">
         {/* Header */}
-        <p className="text-[11px] text-gray-400">{formatHeaderDate()}</p>
+        <p className="text-[11px] text-ink-muted">{formatHeaderDate()}</p>
         <div className="mt-1 flex items-center justify-between">
-          <h1 className="text-[17px] font-medium text-gray-900">Your routine</h1>
+          <h1 className="text-[17px] font-medium text-ink">Your routine</h1>
           {/* `key={percent}` remounts the badge on change so it pops subtly. */}
           <span
             key={percent}
-            className="animate-pop rounded-full bg-[#534AB7] px-2.5 py-1 text-[11px] font-medium text-white"
+            className="animate-pop rounded-full bg-purple px-2.5 py-1 text-[11px] font-medium text-white"
           >
             {percent}% done
           </span>
         </div>
 
         {/* Progress bar */}
-        <div className="mt-3 h-1 w-full rounded-full bg-[#EEEDFE]">
+        {/* `tint-track` is the theme's neutral track — a solid surface color
+            behind a 1px bar would read as a second, brighter line on the page. */}
+        <div className="mt-3 h-1 w-full rounded-full bg-tint-track">
           <div
-            className="h-1 rounded-full bg-[#534AB7] transition-all duration-300 ease-out"
+            className="h-1 rounded-full bg-purple transition-all duration-300 ease-out"
             style={{ width: `${percent}%` }}
           />
         </div>
@@ -302,17 +304,17 @@ function TodayView() {
         {/* First look at the freshly generated routine — reassure that it's a
             starting point, not something fixed. */}
         {isNewRoutine && (
-          <p className="mt-3 text-[12px] leading-relaxed text-gray-500">
+          <p className="mt-3 text-[12px] leading-relaxed text-ink-2">
             Here&apos;s your starting routine, built from your answers. Make it
             yours — edit, add, or remove anything.
           </p>
         )}
 
-        {error && <p className="mt-4 text-[11px] text-red-500">{error}</p>}
+        {error && <p className="mt-4 text-[11px] text-danger">{error}</p>}
 
         {/* Empty state */}
         {total === 0 ? (
-          <p className="mt-16 text-center text-[13px] text-gray-500">
+          <p className="mt-16 text-center text-[13px] text-ink-2">
             No routine yet
           </p>
         ) : (
@@ -326,30 +328,45 @@ function TodayView() {
 
               return (
                 <section key={key}>
-                  <p className="mb-3 text-[11px] uppercase tracking-wide text-gray-400">
+                  <p className="mb-3 text-[11px] uppercase tracking-wide text-ink-muted">
                     {label}
                   </p>
-                  <div className="flex flex-col gap-1">
+                  <div className="flex flex-col gap-2">
                     {sectionTasks.map((task) => {
                       const isDone = doneIds.has(task.id);
                       // Contextual icon derived from the name at render time —
                       // no schema/data change, works for AI and hand-added tasks.
                       const icon = taskIcon(task.name);
                       return (
-                        <div key={task.id} className="flex items-center gap-1">
+                        // Each row is an ordinary navy card, separated from
+                        // its neighbours by a `line` hairline rather than a
+                        // shadow — a black shadow on a near-black page shows
+                        // nothing. A completed row keeps the same surface and
+                        // takes a success-tinted edge, so "done" reads from the
+                        // outline and the row recedes beside the live ones.
+                        <div
+                          key={task.id}
+                          className={`flex items-center gap-1 rounded-2xl border-[1.5px] bg-card pl-2 pr-1 transition-colors duration-200 ${
+                            isDone ? "border-tint-success" : "border-line"
+                          }`}
+                        >
                           {/* Tap-to-complete area — unchanged behavior, just no
                               longer the whole row so it can't conflict with edit. */}
                           <button
                             type="button"
                             onClick={() => toggle(task.id)}
-                            className="flex flex-1 items-center gap-3 py-2 text-left transition active:scale-[0.99]"
+                            className="flex flex-1 items-center gap-3 py-2.5 text-left transition active:scale-[0.99]"
                           >
-                            {/* Circular checkbox — empty ring with a green fill +
-                                check that scale/fade in over the top when done. */}
+                            {/* Circular checkbox — a `raised` well ringed in
+                                `line`, with a brand-purple fill + check that
+                                scale/fade in over the top when done. Purple, not
+                                green: on mobile the filled circle is the row's
+                                one earned purple moment, and the success color is
+                                spent on the card's edge instead. */}
                             <span className="relative h-5 w-5 shrink-0">
-                              <span className="absolute inset-0 rounded-full border-[1.5px] border-gray-300" />
+                              <span className="absolute inset-0 rounded-full border-[1.5px] border-line bg-raised" />
                               <span
-                                className={`absolute inset-0 flex items-center justify-center rounded-full bg-[#1D9E75] transition-all duration-200 ease-out ${
+                                className={`absolute inset-0 flex items-center justify-center rounded-full bg-purple transition-all duration-200 ease-out ${
                                   isDone ? "scale-100 opacity-100" : "scale-50 opacity-0"
                                 }`}
                               >
@@ -369,14 +386,24 @@ function TodayView() {
                               </span>
                             </span>
 
-                            {/* Contextual icon in a small soft-tinted tile —
-                                sits between the check circle and the name to make
-                                the row warm and scannable. Flat: rounded, no
-                                shadow. Dims with the row when the task is done. */}
+                            {/* Contextual icon in a small round tile — sits
+                                between the check circle and the name to make the
+                                row warm and scannable. Dims with the row when the
+                                task is done.
+
+                                `icon.tint` is deliberately unused. taskIcon's
+                                tints are Tailwind 50-weights — near-white pastels
+                                drawn for a white card — and a grid of them glaring
+                                off a navy row is the opposite of what they were
+                                for. The emoji already says which task this is, so
+                                the tile is the plain `raised` surface. Mobile
+                                dropped the tint at its own render site for the
+                                same reason; lib/taskIcon.ts stays untouched and
+                                byte-identical to mobile's port. */}
                             <span
-                              className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[14px] transition-opacity duration-200 ${
-                                icon.tint
-                              } ${isDone ? "opacity-50" : "opacity-100"}`}
+                              className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-raised text-[14px] transition-opacity duration-200 ${
+                                isDone ? "opacity-50" : "opacity-100"
+                              }`}
                               aria-hidden="true"
                             >
                               {icon.emoji}
@@ -386,7 +413,7 @@ function TodayView() {
                                 draws in (scale-x) when done. */}
                             <span
                               className={`flex-1 text-[13px] transition-colors duration-200 ${
-                                isDone ? "text-gray-400" : "text-gray-800"
+                                isDone ? "text-ink-muted" : "text-ink"
                               }`}
                             >
                               <span className="relative inline-block">
@@ -401,7 +428,7 @@ function TodayView() {
 
                             {/* Time on the right */}
                             {task.time && (
-                              <span className="text-[11px] text-gray-400">
+                              <span className="text-[11px] text-ink-muted">
                                 {displayTime(task.time)}
                               </span>
                             )}
@@ -413,7 +440,7 @@ function TodayView() {
                             type="button"
                             onClick={() => openEdit(task)}
                             aria-label={`Edit ${task.name}`}
-                            className="shrink-0 p-2 text-gray-300 transition active:scale-90 hover:text-gray-500"
+                            className="shrink-0 p-2 text-ink-muted transition active:scale-90 hover:text-ink-2"
                           >
                             <svg
                               width="14"
@@ -445,7 +472,7 @@ function TodayView() {
         <button
           type="button"
           onClick={openAdd}
-          className="mt-8 w-full rounded-lg border border-dashed border-gray-200 py-3 text-[13px] font-medium text-[#534AB7] transition active:scale-[0.99]"
+          className="mt-8 w-full rounded-lg border border-dashed border-line py-3 text-[13px] font-medium text-purple-soft transition hover:border-line-purple active:scale-[0.99]"
         >
           + Add task
         </button>

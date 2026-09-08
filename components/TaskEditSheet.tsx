@@ -46,6 +46,15 @@ type Props = {
  * A mobile bottom sheet for adding or editing a task. Slides up from the bottom
  * over a dimmed backdrop. Editing shows a Delete action; adding hides it.
  * Closes on save, on delete, or on tapping the backdrop.
+ *
+ * On dark, the sheet is a `card` surface over a deeper scrim (the old black/30
+ * barely registered against a near-black page), its inputs are `raised` wells
+ * with `line` hairlines, and Delete uses the theme's muted danger red — full
+ * danger red on this page shouts louder than the action deserves.
+ *
+ * Mobile's own task modal is still on light hex literals (it is the documented
+ * holdout in ascenda-mobile/src/theme/dark.ts), so this screen follows the
+ * theme's rules directly rather than mirroring an unconverted counterpart.
  */
 export default function TaskEditSheet({
   open,
@@ -127,26 +136,26 @@ export default function TaskEditSheet({
       {/* Dimmed backdrop — tap to close. */}
       <div
         onClick={busy ? undefined : onClose}
-        className={`absolute inset-0 bg-black/30 transition-opacity duration-200 ${
+        className={`absolute inset-0 bg-black/60 transition-opacity duration-200 ${
           shown ? "opacity-100" : "opacity-0"
         }`}
       />
 
       {/* The sheet itself. */}
       <div
-        className={`relative w-full max-w-[420px] rounded-t-2xl bg-white px-6 pb-8 pt-3 transition-transform duration-200 ease-out ${
+        className={`relative w-full max-w-[420px] rounded-t-2xl border-t-[1.5px] border-line bg-card px-6 pb-8 pt-3 transition-transform duration-200 ease-out ${
           shown ? "translate-y-0" : "translate-y-full"
         }`}
       >
         {/* Grab handle */}
-        <div className="mx-auto mb-5 h-1 w-9 rounded-full bg-gray-200" />
+        <div className="mx-auto mb-5 h-1 w-9 rounded-full bg-line" />
 
-        <h2 className="text-[15px] font-medium text-gray-900">
+        <h2 className="text-[15px] font-medium text-ink">
           {isEdit ? "Edit task" : "Add task"}
         </h2>
 
         {/* Name */}
-        <label className="mt-5 block text-[11px] uppercase tracking-wide text-gray-400">
+        <label className="mt-5 block text-[11px] uppercase tracking-wide text-ink-muted">
           Task
         </label>
         <input
@@ -155,11 +164,11 @@ export default function TaskEditSheet({
           onChange={(e) => setName(e.target.value)}
           placeholder="e.g. Morning walk"
           autoFocus={!isEdit}
-          className="mt-2 w-full rounded-lg border border-gray-200 px-3 py-2.5 text-[14px] text-gray-900 outline-none focus:border-[#534AB7]"
+          className="mt-2 w-full rounded-lg border border-line bg-raised px-3 py-2.5 text-[14px] text-ink outline-none placeholder:text-ink-muted focus:border-purple"
         />
 
         {/* Time */}
-        <label className="mt-4 block text-[11px] uppercase tracking-wide text-gray-400">
+        <label className="mt-4 block text-[11px] uppercase tracking-wide text-ink-muted">
           Time
         </label>
         {/*
@@ -179,7 +188,7 @@ export default function TaskEditSheet({
               if (!h) setMinute("");
             }}
             aria-label="Hour"
-            className="flex-1 appearance-none rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-[14px] text-gray-900 outline-none focus:border-[#534AB7]"
+            className="flex-1 appearance-none rounded-lg border border-line bg-raised px-3 py-2.5 text-[14px] text-ink outline-none focus:border-purple"
           >
             <option value="">--</option>
             {HOURS.map((h) => (
@@ -189,14 +198,14 @@ export default function TaskEditSheet({
             ))}
           </select>
 
-          <span className="text-[14px] font-medium text-gray-400">:</span>
+          <span className="text-[14px] font-medium text-ink-muted">:</span>
 
           <select
             value={minute}
             onChange={(e) => setMinute(e.target.value)}
             disabled={!hour}
             aria-label="Minute"
-            className="flex-1 appearance-none rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-[14px] text-gray-900 outline-none focus:border-[#534AB7] disabled:opacity-50"
+            className="flex-1 appearance-none rounded-lg border border-line bg-raised px-3 py-2.5 text-[14px] text-ink outline-none focus:border-purple disabled:opacity-50"
           >
             <option value="">--</option>
             {minuteOptions.map((m) => (
@@ -208,7 +217,7 @@ export default function TaskEditSheet({
         </div>
 
         {/* Section pills */}
-        <label className="mt-4 block text-[11px] uppercase tracking-wide text-gray-400">
+        <label className="mt-4 block text-[11px] uppercase tracking-wide text-ink-muted">
           Section
         </label>
         <div className="mt-2 flex gap-2">
@@ -219,10 +228,14 @@ export default function TaskEditSheet({
                 key={key}
                 type="button"
                 onClick={() => setSection(key)}
-                className={`flex-1 rounded-full py-2.5 text-[13px] font-medium transition-colors ${
+                // The selected pill is a marked surface, so it takes the
+                // brand purple; the resting ones are ordinary `raised` chips
+                // with a `line` hairline. Both carry a border so selecting one
+                // never shifts the row's metrics.
+                className={`flex-1 rounded-full border py-2.5 text-[13px] font-medium transition-colors ${
                   selected
-                    ? "bg-[#534AB7] text-white"
-                    : "bg-[#EEEDFE] text-[#534AB7]"
+                    ? "border-purple bg-purple text-white"
+                    : "border-line bg-raised text-ink-2"
                 }`}
               >
                 {label}
@@ -231,12 +244,13 @@ export default function TaskEditSheet({
           })}
         </div>
 
-        {/* Save */}
+        {/* Save — the sheet's primary action, and the one surface here that
+            earns mobile's gradient + glow treatment. */}
         <button
           type="button"
           onClick={handleSave}
           disabled={!canSave}
-          className="mt-7 w-full rounded-lg bg-[#534AB7] py-3 text-[14px] font-medium text-white transition active:scale-[0.99] disabled:opacity-50"
+          className="mt-7 w-full rounded-lg bg-gradient-primary py-3 text-[14px] font-medium text-white shadow-glow transition active:scale-[0.99] disabled:opacity-50 disabled:shadow-none"
         >
           {busy ? "Saving…" : "Save"}
         </button>
@@ -247,7 +261,7 @@ export default function TaskEditSheet({
             type="button"
             onClick={handleDelete}
             disabled={busy}
-            className="mt-3 w-full py-2 text-center text-[13px] font-medium text-[#C0524B] transition active:scale-[0.99] disabled:opacity-50"
+            className="mt-3 w-full py-2 text-center text-[13px] font-medium text-danger-muted transition active:scale-[0.99] disabled:opacity-50"
           >
             Delete task
           </button>
