@@ -132,6 +132,16 @@ function TodayView() {
   const doneCount = tasks.filter((t) => doneIds.has(t.id)).length;
   const percent = total === 0 ? 0 : Math.round((doneCount / total) * 100);
 
+  // "Up next" — the first task still to do, in the order the list renders
+  // (sections in fixed order, sorted by time within each). It is the one row
+  // on this screen that earns the theme's purple: the current thing to do,
+  // readable at a glance. Null once everything is done, so a finished day
+  // marks nothing. Mirrors mobile's TaskRow `upNext` prop.
+  const upNextId =
+    SECTIONS.flatMap(({ key }) =>
+      tasks.filter((t) => t.section === key).sort(byTime),
+    ).find((t) => !doneIds.has(t.id))?.id ?? null;
+
   // Toggle a task's completion for today, optimistically.
   async function toggle(taskId: string) {
     const wasDone = doneIds.has(taskId);
@@ -334,6 +344,7 @@ function TodayView() {
                   <div className="flex flex-col gap-2">
                     {sectionTasks.map((task) => {
                       const isDone = doneIds.has(task.id);
+                      const isUpNext = task.id === upNextId;
                       // Contextual icon derived from the name at render time —
                       // no schema/data change, works for AI and hand-added tasks.
                       const icon = taskIcon(task.name);
@@ -341,13 +352,26 @@ function TodayView() {
                         // Each row is an ordinary navy card, separated from
                         // its neighbours by a `line` hairline rather than a
                         // shadow — a black shadow on a near-black page shows
-                        // nothing. A completed row keeps the same surface and
-                        // takes a success-tinted edge, so "done" reads from the
-                        // outline and the row recedes beside the live ones.
+                        // nothing.
+                        //
+                        // Three states, and only one of them is purple:
+                        //  - done    same surface, success-tinted edge, so the
+                        //            finished row reads from its outline and
+                        //            recedes beside the live ones
+                        //  - up next the marked surface — `soft-purple` with a
+                        //            purple edge and the glow. Exactly one row
+                        //            can be in this state, which is what keeps
+                        //            purple meaning "the current task" rather
+                        //            than decorating the list
+                        //  - resting the ordinary navy card
                         <div
                           key={task.id}
-                          className={`flex items-center gap-1 rounded-2xl border-[1.5px] bg-card pl-2 pr-1 transition-colors duration-200 ${
-                            isDone ? "border-tint-success" : "border-line"
+                          className={`flex items-center gap-1 rounded-2xl border-[1.5px] pl-2 pr-1 transition-colors duration-200 ${
+                            isDone
+                              ? "border-tint-success bg-card"
+                              : isUpNext
+                                ? "border-line-purple bg-soft-purple shadow-glow"
+                                : "border-line bg-card"
                           }`}
                         >
                           {/* Tap-to-complete area — unchanged behavior, just no
@@ -428,7 +452,13 @@ function TodayView() {
 
                             {/* Time on the right */}
                             {task.time && (
-                              <span className="text-[11px] text-ink-muted">
+                              <span
+                                className={`text-[11px] ${
+                                  isUpNext
+                                    ? "font-semibold text-purple-soft"
+                                    : "text-ink-muted"
+                                }`}
+                              >
                                 {displayTime(task.time)}
                               </span>
                             )}
