@@ -23,7 +23,9 @@ type Member = {
 // A post row as stored in `posts` (the fields the feed renders).
 type Post = {
   id: string;
-  author_name: string;
+  // Nullable: rows written before the server-side author_name trigger
+  // (0003) carry whatever the client sent, including null and blank names.
+  author_name: string | null;
   task_did: string;
   motivation: string;
   created_at: string;
@@ -31,9 +33,18 @@ type Post = {
 
 // First initial of a name for the avatar tiles, e.g. "Jane Doe" -> "J".
 // Matches the single-letter avatars on the profile and leaderboard screens.
-function firstInitial(name: string): string {
-  const trimmed = name.trim();
+// Tolerates a null or blank name (see Post.author_name) rather than throwing
+// on .trim(), falling back to the same "?" as a blank name.
+function firstInitial(name: string | null): string {
+  const trimmed = (name ?? "").trim();
   return trimmed ? trimmed.charAt(0).toUpperCase() : "?";
+}
+
+// The byline for a post. Same nullable-column caveat as firstInitial(): a
+// legacy row with no name renders as "Anonymous", matching what the insert
+// trigger stores for a profile with no full_name.
+function displayName(name: string | null): string {
+  return (name ?? "").trim() || "Anonymous";
 }
 
 // Compact relative time from an ISO timestamp: "just now", "3h ago", "2d ago".
@@ -225,7 +236,7 @@ export default function LeagueDetailPage() {
                       {/* Author + relative time */}
                       <div className="flex items-center justify-between gap-2">
                         <span className="truncate text-[13px] font-medium text-gray-900">
-                          {post.author_name}
+                          {displayName(post.author_name)}
                         </span>
                         <span className="shrink-0 text-[10px] text-gray-400">
                           {relativeTime(post.created_at)}
